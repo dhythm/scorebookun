@@ -505,6 +505,7 @@ export function LiveScoring() {
             <div className="grid grid-cols-2 gap-2">
               {[
                 "規定回終了",
+                "引き分け",
                 "時間切れ",
                 "コールド",
                 "降雨・中止",
