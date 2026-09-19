@@ -212,3 +212,5 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Apply migrations to PostgreSQL
         run: pnpm db:migrate
+      - name: Load seed games into PostgreSQL
+        run: pnpm db:seed

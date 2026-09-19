@@ -92,3 +92,37 @@ test("the share dialog shows a QR code for the game URL", async ({ page }) => {
     dialog.getByRole("button", { name: "URLをコピー" })
   ).toBeVisible();
 });
+
+test.describe("seed games", () => {
+  test("a game in progress opens where its scorers left off", async ({
+    page,
+  }) => {
+    await page.goto("/games/seed-live-last-chance");
+
+    await expect(page.getByText("2アウト").first()).toBeVisible();
+    await expect(
+      page.getByText("7回裏").filter({ visible: true }).first()
+    ).toBeVisible();
+    await expect(
+      page.getByText("川口アイアンズ").filter({ visible: true }).first()
+    ).toBeVisible();
+  });
+
+  test("a finished game opens on its result", async ({ page }) => {
+    await page.goto("/games/seed-finished-walk-off");
+
+    await expect(page.getByRole("heading", { name: "試合終了" })).toBeVisible();
+    await expect(
+      page.getByText("世田谷ブルーバーズ").filter({ visible: true }).first()
+    ).toBeVisible();
+  });
+
+  test("a game before the first pitch is ready to score", async ({ page }) => {
+    await page.goto("/games/seed-before-first-pitch");
+
+    await expect(page.getByText("0アウト").first()).toBeVisible();
+    await expect(
+      page.getByText("1回表").filter({ visible: true }).first()
+    ).toBeVisible();
+  });
+});
