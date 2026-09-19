@@ -2,7 +2,6 @@
 
 import { FeedbackDialog } from "@/components/feedback-dialog";
 import { DisplaySettingsDialog } from "@/components/display-settings-dialog";
-import { DevelopmentScenarioPanel } from "@/components/development-scenario-panel";
 import { GameHistory } from "@/components/game-history";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,7 +25,6 @@ import {
 import type { FieldingPosition, Player, Team } from "@/lib/domain/types";
 import { FIELDING_POSITION_LABELS } from "@/lib/domain/catalog";
 import { cn } from "@/lib/utils";
-import { shouldShowDevelopmentTools } from "@/lib/development-mode";
 import { gamePath } from "@/lib/app-state/routes";
 import { ArrowDown, ArrowUp, GripVertical, Plus, X } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -540,7 +538,6 @@ export function GameSetup() {
     setHomeTeam(preset.home);
     toast.success("チーム1・チーム2の選手を設定しました");
   };
-  const showDevelopmentTools = shouldShowDevelopmentTools();
 
   return (
     <div className="min-h-screen bg-background">
@@ -574,8 +571,6 @@ export function GameSetup() {
             チーム1・チーム2（各9人）を設定
           </Button>
         </section>
-
-        {showDevelopmentTools && <DevelopmentScenarioPanel />}
 
         <Card className="gap-3 border-border py-4">
           <CardHeader className="px-4 py-0">

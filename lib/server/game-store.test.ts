@@ -3,6 +3,10 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createDatabase, type Database } from "@/lib/db/client";
 import type { GameConfig } from "@/lib/domain/types";
 
+import { eventRunnerMovements, gameEvents, gamePlayers } from "@/lib/db/schema";
+import { createSeedGames } from "@/lib/seed/seed-games";
+import type { SharedGame } from "@/lib/sync/shared-game";
+
 import { createGame, findGame, saveGame } from "./game-store";
 
 const config: GameConfig = {
@@ -125,5 +129,85 @@ describe("game store", () => {
         },
       })
     ).resolves.toEqual({ status: "notFound" });
+  });
+
+  it("stores teams, players, events, and runner movements as rows", async () => {
+    const scenario = createSeedGames()[1].game;
+    const created = await createGame(database.db, {
+      date,
+      config: scenario.config,
+    });
+    const game: SharedGame = { ...created.game, events: scenario.events };
+
+    await saveGame(database.db, {
+      id: created.id,
+      baseVersion: 1,
+      mutationId: "mutation-1",
+      game,
+    });
+
+    const found = await findGame(database.db, created.id);
+    expect(found?.game.events).toEqual(scenario.events);
+    expect(found?.game.config.teams.away.players).toHaveLength(9);
+    await expect(database.db.select().from(gamePlayers)).resolves.toHaveLength(
+      // 9 starters per team plus the falcons' 2 and the irons' 1 on the bench
+      21
+    );
+    await expect(database.db.select().from(gameEvents)).resolves.toHaveLength(
+      scenario.events.length
+    );
+    const movementCount = scenario.events.reduce(
+      (count, event) =>
+        count + ("movements" in event ? event.movements.length : 0),
+      0
+    );
+    await expect(
+      database.db.select().from(eventRunnerMovements)
+    ).resolves.toHaveLength(movementCount);
+  });
+
+  it("replaces rows instead of accumulating them when plays are removed", async () => {
+    const created = await createGame(database.db, { date, config });
+    const note = { id: "note", kind: "note" as const, text: "rain delay" };
+    await saveGame(database.db, {
+      id: created.id,
+      baseVersion: 1,
+      mutationId: "mutation-1",
+      game: { ...created.game, events: [note] },
+    });
+
+    await saveGame(database.db, {
+      id: created.id,
+      baseVersion: 2,
+      mutationId: "mutation-2",
+      game: {
+        ...created.game,
+        events: [],
+        deletedEvents: [{ event: note, index: 0 }],
+      },
+    });
+
+    const found = await findGame(database.db, created.id);
+    expect(found?.game.events).toEqual([]);
+    expect(found?.game.deletedEvents).toEqual([{ event: note, index: 0 }]);
+  });
+
+  it("keeps the previous game and version when a save fails midway", async () => {
+    const created = await createGame(database.db, { date, config });
+    const note = { id: "same-id", kind: "note" as const, text: "first" };
+
+    await expect(
+      saveGame(database.db, {
+        id: created.id,
+        baseVersion: 1,
+        mutationId: "mutation-1",
+        game: { ...created.game, events: [note, note] },
+      })
+    ).rejects.toThrow();
+
+    await expect(findGame(database.db, created.id)).resolves.toEqual({
+      game: created.game,
+      version: 1,
+    });
   });
 });

@@ -10,8 +10,16 @@ const globalCache = globalThis as typeof globalThis & {
 async function openDatabase(): Promise<Database> {
   const config = resolveDatabaseConfig(process.env);
   const database = await createDatabase(config);
-  // PGlite lives inside this process, so nothing else can migrate it.
-  if (config.driver === "pglite") await database.migrate();
+  if (config.driver === "pglite") {
+    // PGlite lives inside this process, so nothing else can migrate it.
+    await database.migrate();
+    // An in-memory database starts empty on every launch (agent sandboxes,
+    // E2E runs), so it gets the seed games instead of a separate seed step.
+    if (config.dataDir === undefined) {
+      const { seedGames } = await import("@/lib/server/seed");
+      await seedGames(database.db);
+    }
+  }
   return database;
 }
 
