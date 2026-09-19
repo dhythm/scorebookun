@@ -263,6 +263,7 @@ export function RunnerAdvanceSheet({
       currentOuts: outs,
       movements,
       batterId: currentBatter?.id,
+      result,
     });
     const scorerIds = new Set(
       outcome.scoringMovements.map((movement) => movement.playerId)

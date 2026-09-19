@@ -657,7 +657,9 @@ export function replay(
     const { outsRecorded, scoringMovements } = evaluateMovementOutcome({
       currentOuts: snapshot.outs,
       movements: event.movements,
-      ...(event.kind === "atBat" ? { batterId: event.batterId } : {}),
+      ...(event.kind === "atBat"
+        ? { batterId: event.batterId, result: event.result }
+        : {}),
     });
 
     for (const movement of event.movements) {

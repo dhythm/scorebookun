@@ -33,21 +33,53 @@ export function initializeRbiByPlayerId(
   return rbi;
 }
 
+/** Results that by definition put the batter safely on first base. */
+const BATTER_REACHES_FIRST_RESULTS: ReadonlySet<AtBatResult> = new Set([
+  "single",
+  "double",
+  "triple",
+  "homerun",
+  "walk",
+  "hitByPitch",
+  "error",
+  "fieldersChoice",
+  "interference",
+]);
+
+/**
+ * A batter put out after safely reaching first base is an ordinary tag out,
+ * so runs that crossed the plate before it still count.
+ */
+export function isBatterOutAfterReachingFirst(
+  result: AtBatResult | undefined,
+  movement: RunnerMovement
+): boolean {
+  return (
+    movement.from === "batter" &&
+    movement.to === "out" &&
+    (movement.outType === "tag" ||
+      (result !== undefined && BATTER_REACHES_FIRST_RESULTS.has(result)))
+  );
+}
+
 /**
  * Evaluates outs and runs in chronological movement order.
  *
  * The array order is part of the scoring contract: on a tag third out, only
- * runners who reached home before that out score. A batter-runner or force
- * third out cancels every run from the play regardless of order.
+ * runners who reached home before that out score. A force third out, or a
+ * batter put out before reaching first base, cancels every run from the play
+ * regardless of order.
  */
 export function evaluateMovementOutcome({
   currentOuts,
   movements,
   batterId,
+  result,
 }: {
   currentOuts: number;
   movements: readonly RunnerMovement[];
   batterId?: string;
+  result?: AtBatResult;
 }): {
   outsRecorded: number;
   scoringMovements: RunnerMovement[];
@@ -59,7 +91,8 @@ export function evaluateMovementOutcome({
   const batterMakesHalfEndingOut =
     halfEndingOut?.from === "batter" &&
     batterId !== undefined &&
-    halfEndingOut.playerId === batterId;
+    halfEndingOut.playerId === batterId &&
+    !isBatterOutAfterReachingFirst(result, halfEndingOut);
   const forcePlayMakesHalfEndingOut = halfEndingOut?.outType === "force";
   let outsRecorded = 0;
   const scoringMovements: RunnerMovement[] = [];

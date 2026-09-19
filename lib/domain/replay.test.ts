@@ -290,6 +290,87 @@ describe("replay", () => {
     expect(result.timeline.at(-1)?.scoringMovements).toEqual([]);
   });
 
+  it("counts a preceding run when the batter is put out after reaching first on a hit", () => {
+    const events: GameEvent[] = [
+      atBat(
+        "runner-second",
+        "away-1",
+        [{ playerId: "away-1", from: "batter", to: "second", isRBI: false }],
+        "double"
+      ),
+      out("first-out", "away-2"),
+      out("second-out", "away-3"),
+      atBat(
+        "single-then-thrown-out",
+        "away-4",
+        [
+          { playerId: "away-1", from: "second", to: "home", isRBI: true },
+          { playerId: "away-4", from: "batter", to: "out", isRBI: false },
+        ],
+        "single"
+      ),
+    ];
+
+    const result = replay(events, config(7, 5, 1));
+
+    expect(result.snapshot.score.away).toBe(1);
+    expect(result.snapshot.half).toBe("bottom");
+  });
+
+  it("counts a preceding run when the batter-runner is tagged out after reaching first on an error", () => {
+    const events: GameEvent[] = [
+      atBat(
+        "runner-third",
+        "away-1",
+        [{ playerId: "away-1", from: "batter", to: "third", isRBI: false }],
+        "triple"
+      ),
+      out("first-out", "away-2"),
+      out("second-out", "away-3"),
+      atBat(
+        "error-then-thrown-out",
+        "away-4",
+        [
+          { playerId: "away-1", from: "third", to: "home", isRBI: false },
+          {
+            playerId: "away-4",
+            from: "batter",
+            to: "out",
+            isRBI: false,
+            outType: "tag",
+          },
+        ],
+        "error"
+      ),
+    ];
+
+    expect(replay(events, config(7, 5, 1)).snapshot.score.away).toBe(1);
+  });
+
+  it("does not count a run scored after the batter-runner's tag third out", () => {
+    const events: GameEvent[] = [
+      atBat(
+        "runner-second",
+        "away-1",
+        [{ playerId: "away-1", from: "batter", to: "second", isRBI: false }],
+        "double"
+      ),
+      out("first-out", "away-2"),
+      out("second-out", "away-3"),
+      atBat(
+        "thrown-out-before-run",
+        "away-4",
+        [
+          { playerId: "away-4", from: "batter", to: "out", isRBI: false },
+          { playerId: "away-1", from: "second", to: "home", isRBI: true },
+        ],
+        "single"
+      ),
+    ];
+
+    expect(replay(events, config(7, 5, 1)).snapshot.score.away).toBe(0);
+  });
+
   it("records an arbitrary multiple-out play from the entered movements", () => {
     const doubleOutMovements: RunnerMovement[] = [
       {
