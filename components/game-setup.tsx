@@ -547,8 +547,8 @@ export function GameSetup() {
           スコアブッくん
         </h1>
         <div className="flex items-center gap-0.5">
-          <FeedbackDialog />
           <DisplaySettingsDialog />
+          <FeedbackDialog />
         </div>
       </header>
 

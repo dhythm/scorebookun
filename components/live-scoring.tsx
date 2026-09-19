@@ -58,18 +58,15 @@ import {
 import { toast } from "sonner";
 import { formatViolationMessage } from "@/lib/app-state/feedback";
 import { ShareGameButton } from "@/components/share-game-button";
-import { FeedbackDialog } from "@/components/feedback-dialog";
+import { HomeLink } from "@/components/home-link";
 import { SituationMiniHeader } from "@/components/situation-mini-header";
 import { EventIntegrityAlert } from "@/components/event-integrity-alert";
 import { GameNoteDialog } from "@/components/game-note-dialog";
 import { DisplaySettingsDialog } from "@/components/display-settings-dialog";
 import { EditHistoryControls } from "@/components/edit-history-controls";
-import { useUiPreferences } from "@/components/ui-preferences-provider";
-import { vibrateOnConfirmation } from "@/lib/ui-preferences";
 
 export function LiveScoring() {
   const { game, dispatch, addEvent } = useGame();
-  const { vibrationEnabled } = useUiPreferences();
   const [pendingResult, setPendingResult] = useState<AtBatResult | null>(null);
   const [pendingDetail, setPendingDetail] = useState<string | undefined>();
   const [pendingBattedBall, setPendingBattedBall] = useState<
@@ -107,7 +104,6 @@ export function LiveScoring() {
     } else {
       toast.success(successMessage);
     }
-    vibrateOnConfirmation(vibrationEnabled, navigator);
     return true;
   };
 
@@ -216,17 +212,16 @@ export function LiveScoring() {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="sticky top-0 z-40 flex items-center justify-between border-b border-primary-foreground/10 bg-primary px-3 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] text-primary-foreground shadow-sm sm:px-5 sm:pb-3">
-        <h1 className="flex items-center gap-2 text-base font-extrabold tracking-tight sm:text-lg">
-          <span className="text-lg opacity-90 sm:text-xl">&#9918;</span>
-          {/* Six 44px actions leave no room for the name on a phone. */}
-          <span className="sr-only min-[480px]:not-sr-only">
-            スコアブッくん
-          </span>
-        </h1>
+        <div className="flex min-w-0 items-center gap-1">
+          <HomeLink />
+          <h1 className="flex items-center gap-2 text-base font-extrabold tracking-tight sm:text-lg">
+            {/* The 44px actions leave no room for the name on a phone. */}
+            <span className="sr-only min-[480px]:not-sr-only">
+              スコアブッくん
+            </span>
+          </h1>
+        </div>
         <div className="flex shrink-0 items-center gap-0.5">
-          <ShareGameButton />
-          <FeedbackDialog />
-          <DisplaySettingsDialog />
           <Button
             type="button"
             variant="ghost"
@@ -267,6 +262,13 @@ export function LiveScoring() {
           >
             <Flag className="h-5 w-5" />
           </Button>
+          {/* Game actions come first; app-level tools follow. */}
+          <span
+            className="mx-1 h-5 w-px shrink-0 bg-primary-foreground/25"
+            aria-hidden="true"
+          />
+          <ShareGameButton />
+          <DisplaySettingsDialog />
         </div>
       </header>
 

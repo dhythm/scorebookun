@@ -47,12 +47,12 @@ describe("GameErrorBoundary", () => {
     );
 
     expect(
-      screen.getByText("最後に保存できた時点までの記録を退避できます")
+      screen.getByText("最後に保存できた時点までの記録をエクスポートできます")
     ).toBeTruthy();
     expect(
       (
         screen.getByRole("button", {
-          name: "JSONを書き出す",
+          name: "記録をエクスポート",
         }) as HTMLButtonElement
       ).disabled
     ).toBe(true);
@@ -81,7 +81,9 @@ describe("GameErrorBoundary", () => {
         <BrokenScreen />
       </GameErrorBoundary>
     );
-    await user.click(screen.getByRole("button", { name: "JSONを書き出す" }));
+    await user.click(
+      screen.getByRole("button", { name: "記録をエクスポート" })
+    );
 
     expect(createObjectURL).toHaveBeenCalledWith(
       expect.objectContaining({ type: "application/json" })

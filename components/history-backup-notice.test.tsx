@@ -52,18 +52,20 @@ describe("HistoryBackupNotice", () => {
     );
 
     expect(
-      screen.queryByRole("button", { name: "退避済みの履歴を削除" })
+      screen.queryByRole("button", { name: "エクスポート済みの履歴を削除" })
     ).toBeNull();
 
-    await user.click(screen.getByRole("button", { name: "2試合をJSONで退避" }));
+    await user.click(
+      screen.getByRole("button", { name: "2試合をエクスポート" })
+    );
 
     expect(click).toHaveBeenCalledOnce();
     await user.click(
-      screen.getByRole("button", { name: "退避済みの履歴を削除" })
+      screen.getByRole("button", { name: "エクスポート済みの履歴を削除" })
     );
     expect(
       screen.getByText((text) =>
-        text.includes("JSONを保存した2試合を履歴から削除します。")
+        text.includes("エクスポートした2試合を履歴から削除します。")
       )
     ).toBeTruthy();
 

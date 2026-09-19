@@ -21,11 +21,12 @@ import { formatEventNotation } from "@/lib/domain/notation";
 import { RotateCcw, Edit, Share2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { toPersistedGame } from "@/lib/app-state/selectors";
+import { downloadJsonFile, exportFileName } from "@/lib/export/download-file";
 import { exportGameAsJson, exportGameAsText } from "@/lib/export/game-log";
 import { getPitcherStats } from "@/lib/domain/pitching";
 import { GameHistory } from "@/components/game-history";
 import { ShareGameButton } from "@/components/share-game-button";
-import { FeedbackDialog } from "@/components/feedback-dialog";
+import { HomeLink } from "@/components/home-link";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -298,29 +299,23 @@ export function GameResult() {
     }
   };
 
-  const handleJsonDownload = () => {
-    const json = exportGameAsJson(toPersistedGame(game));
-    const url = URL.createObjectURL(
-      new Blob([json], { type: "application/json" })
+  const handleExport = () => {
+    downloadJsonFile(
+      exportFileName("game", game.date),
+      exportGameAsJson(toPersistedGame(game))
     );
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `scorebook-${game.date.slice(0, 10)}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    toast.success("JSONを書き出しました");
+    toast.success("試合をエクスポートしました");
   };
 
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 flex items-center justify-between border-b border-primary-foreground/10 bg-primary px-4 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] text-primary-foreground shadow-sm print:hidden">
-        <h1 className="flex items-center gap-2 text-lg font-extrabold">
-          <span className="text-xl">&#9918;</span>
-          試合終了
-        </h1>
+        <div className="flex min-w-0 items-center gap-1">
+          <HomeLink />
+          <h1 className="text-lg font-extrabold">試合終了</h1>
+        </div>
         <div className="flex items-center gap-0.5">
           <ShareGameButton />
-          <FeedbackDialog />
           <DisplaySettingsDialog />
         </div>
       </header>
@@ -373,13 +368,9 @@ export function GameResult() {
               <Share2 className="mr-2 h-4 w-4" />
               共有
             </Button>
-            <Button
-              variant="secondary"
-              className="h-11"
-              onClick={handleJsonDownload}
-            >
+            <Button variant="secondary" className="h-11" onClick={handleExport}>
               <Download className="mr-2 h-4 w-4" />
-              JSON
+              エクスポート
             </Button>
             <PrintScorebookButton />
             <Button

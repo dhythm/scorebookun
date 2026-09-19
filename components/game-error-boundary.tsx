@@ -4,6 +4,7 @@ import { Component, type ReactNode } from "react";
 import { Download, RefreshCw, TriangleAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { downloadJsonFile, exportFileName } from "@/lib/export/download-file";
 import { exportGameAsJson } from "@/lib/export/game-log";
 import {
   createBrowserGameRepository,
@@ -27,15 +28,7 @@ function getActiveGame(): PersistedGameV2 | null {
 }
 
 function downloadGame(game: PersistedGameV2): void {
-  const json = exportGameAsJson(game);
-  const url = URL.createObjectURL(
-    new Blob([json], { type: "application/json" })
-  );
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `scorebook-${game.date.slice(0, 10)}.json`;
-  anchor.click();
-  URL.revokeObjectURL(url);
+  downloadJsonFile(exportFileName("game", game.date), exportGameAsJson(game));
 }
 
 function GameErrorFallback() {
@@ -54,10 +47,10 @@ function GameErrorFallback() {
         <div className="space-y-2">
           <h1 className="text-lg font-bold">画面を表示できませんでした</h1>
           <p className="text-sm font-semibold">
-            最後に保存できた時点までの記録を退避できます
+            最後に保存できた時点までの記録をエクスポートできます
           </p>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            JSONを書き出して記録を退避してから、画面を再読み込みしてください。
+            記録をエクスポートしてから、画面を再読み込みしてください。
           </p>
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
@@ -71,7 +64,7 @@ function GameErrorFallback() {
             }}
           >
             <Download className="mr-2 h-4 w-4" />
-            JSONを書き出す
+            記録をエクスポート
           </Button>
           <Button
             type="button"

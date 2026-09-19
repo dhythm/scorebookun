@@ -44,14 +44,11 @@ describe("UiPreferencesProvider", () => {
     const { result } = renderHook(() => useUiPreferences(), { wrapper });
     expect(result.current.outdoorMode).toBe(true);
 
-    act(() => result.current.setVibrationEnabled(true));
+    act(() => result.current.setOutdoorMode(false));
     expect(
       JSON.parse(
         window.localStorage.getItem("baseball-scorer-ui-preferences") ?? "{}"
       )
-    ).toMatchObject({
-      outdoorMode: true,
-      vibrationEnabled: true,
-    });
+    ).toEqual({ version: 1, outdoorMode: false });
   });
 });

@@ -18,7 +18,6 @@ import {
 
 interface UiPreferencesContextValue extends UiPreferences {
   setOutdoorMode: (enabled: boolean) => void;
-  setVibrationEnabled: (enabled: boolean) => void;
 }
 
 const UiPreferencesContext = createContext<UiPreferencesContextValue | null>(
@@ -68,17 +67,8 @@ export function UiPreferencesProvider({ children }: { children: ReactNode }) {
     setPreferences((current) => ({ ...current, outdoorMode: enabled }));
   }, []);
 
-  const setVibrationEnabled = useCallback((enabled: boolean) => {
-    setPreferences((current) => ({
-      ...current,
-      vibrationEnabled: enabled,
-    }));
-  }, []);
-
   return (
-    <UiPreferencesContext.Provider
-      value={{ ...preferences, setOutdoorMode, setVibrationEnabled }}
-    >
+    <UiPreferencesContext.Provider value={{ ...preferences, setOutdoorMode }}>
       {children}
     </UiPreferencesContext.Provider>
   );
