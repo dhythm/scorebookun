@@ -493,7 +493,8 @@ function TeamSetupForm({
 }
 
 export function GameSetup() {
-  const { dispatch } = useGame();
+  const { createGame } = useGame();
+  const [isCreating, setIsCreating] = useState(false);
   const router = useRouter();
   const [awayTeam, setAwayTeam] = useState<Team>(emptyTeam);
   const [homeTeam, setHomeTeam] = useState<Team>(emptyTeam);
@@ -513,18 +514,24 @@ export function GameSetup() {
     isTeamRosterValid(homeTeam) &&
     inningsValid;
 
-  const startGame = () => {
-    const id = generateId();
-    dispatch({
-      type: "START_GAME",
-      id,
-      date: new Date().toISOString(),
-      config: {
-        regulationInnings: totalInnings,
-        teams: { away: awayTeam, home: homeTeam },
-      },
-    });
-    router.push(gamePath(id));
+  const startGame = async () => {
+    setIsCreating(true);
+    try {
+      const id = await createGame({
+        date: new Date().toISOString(),
+        config: {
+          regulationInnings: totalInnings,
+          teams: { away: awayTeam, home: homeTeam },
+        },
+      });
+      if (!id) {
+        toast.error("試合を作成できませんでした。通信環境を確認してください");
+        return;
+      }
+      router.push(gamePath(id));
+    } finally {
+      setIsCreating(false);
+    }
   };
 
   const applySamplePreset = () => {
@@ -550,7 +557,7 @@ export function GameSetup() {
 
       <main className="p-4 pb-24 space-y-4 max-w-lg mx-auto lg:max-w-6xl lg:px-6">
         <GameHistory />
-        <h2 className="text-lg font-bold text-foreground">新しい試合を設定</h2>
+        <h2 className="text-lg font-bold text-foreground">試合を作成</h2>
         <section
           aria-labelledby="setup-preset-title"
           className="space-y-2 rounded-xl border border-border bg-card p-3 shadow-sm"
@@ -632,10 +639,10 @@ export function GameSetup() {
         <div className="max-w-lg mx-auto lg:max-w-6xl lg:px-6">
           <Button
             className="w-full h-12 text-base font-semibold"
-            disabled={!canStartGame}
+            disabled={!canStartGame || isCreating}
             onClick={startGame}
           >
-            試合開始
+            {isCreating ? "作成中…" : "試合を作成して開始"}
           </Button>
         </div>
       </div>

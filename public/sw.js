@@ -50,6 +50,9 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Shared game data must always come from the server, never from a cache.
+  if (new URL(request.url).pathname.startsWith("/api/")) return;
+
   if (request.mode === "navigate") {
     event.respondWith(
       (async () => {

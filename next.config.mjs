@@ -6,6 +6,8 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_BUILD_ID: buildId,
   },
+  // PGlite loads its WASM and data files from its own package directory.
+  serverExternalPackages: ["@electric-sql/pglite"],
   images: {
     unoptimized: true,
   },

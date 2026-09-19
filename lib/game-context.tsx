@@ -21,22 +21,43 @@ import {
   evaluateEventUpdate,
 } from "./app-state/reducer";
 import { toPersistedGame } from "./app-state/selectors";
+import { generateId } from "./game-utils";
 import {
-  DEFAULT_GAME_STORAGE_KEY,
   createBrowserGameRepository,
-  parseStoredGame,
   type PersistedGameV2,
 } from "./storage/local-storage";
-import type { GameEvent, Violation } from "./domain/types";
+import { createBrowserSyncMetaStore } from "./storage/sync-meta";
+import { createGameApi, type GameApi } from "./sync/game-api";
+import { registerGame } from "./sync/register-game";
+import { toSharedGame, type SharedGame } from "./sync/shared-game";
+import {
+  createGameSync,
+  type GameSync,
+  type GameSyncState,
+} from "./sync/sync-engine";
+import type { GameConfig, GameEvent, Violation } from "./domain/types";
+
+/** A game before the server has issued its id; plays are optional. */
+type NewGame = { date: string; config: GameConfig } & Partial<
+  Pick<SharedGame, "status" | "events" | "deletedEvents">
+>;
+
+type LoadGameResult = "loaded" | "notFound" | "unavailable";
 
 interface GameContextValue {
   game: AppGame | null;
   storageReady: boolean;
+  /** Someone else saved first; editing is locked until their game is loaded. */
   storageConflict: boolean;
+  /** Changes are not safely stored yet (unsent, or the device copy failed). */
   storageError: boolean;
   dispatch: (action: GameAction) => boolean;
   retrySave: () => void;
-  loadGame: (gameId: string) => boolean;
+  /** Registers a new shared game on the server; resolves to its id. */
+  createGame: (newGame: NewGame) => Promise<string | null>;
+  /** Registers archived games on the server; resolves to how many succeeded. */
+  importGames: (games: readonly PersistedGameV2[]) => Promise<number>;
+  loadGame: (gameId: string) => Promise<LoadGameResult>;
   resetGame: () => void;
   reloadConflictingGame: () => void;
   addEvent: (event: GameEvent) => {
@@ -56,131 +77,233 @@ interface GameContextValue {
 
 const GameContext = createContext<GameContextValue | null>(null);
 
-function sameRecordedGame(
-  left: PersistedGameV2,
-  right: PersistedGameV2
-): boolean {
-  return (
-    JSON.stringify({
-      id: left.id,
-      status: left.status,
-      config: left.config,
-      events: left.events,
-    }) ===
-    JSON.stringify({
-      id: right.id,
-      status: right.status,
-      config: right.config,
-      events: right.events,
-    })
-  );
+const DEFAULT_POLL_INTERVAL_MS = 3_000;
+const DEFAULT_RETRY_DELAY_MS = 2_000;
+
+function canPoll(): boolean {
+  return document.visibilityState === "visible" && navigator.onLine;
 }
 
-export function GameProvider({ children }: { children: ReactNode }) {
+interface GameProviderProps {
+  children: ReactNode;
+  api?: GameApi;
+  pollIntervalMs?: number;
+  retryDelayMs?: number;
+}
+
+export function GameProvider({
+  children,
+  api: providedApi,
+  pollIntervalMs = DEFAULT_POLL_INTERVAL_MS,
+  retryDelayMs = DEFAULT_RETRY_DELAY_MS,
+}: GameProviderProps) {
   const [game, reducerDispatch] = useReducer(gameReducer, null);
   const [storageReady, setStorageReady] = useState(false);
-  const [conflictingGame, setConflictingGame] =
-    useState<PersistedGameV2 | null>(null);
+  const [syncState, setSyncState] = useState<GameSyncState | null>(null);
+  const [deviceSaveFailed, setDeviceSaveFailed] = useState(false);
+  // Bumped by every local action so the save effect runs even when the
+  // reducer returns the same state.
+  const [localChangeCount, setLocalChangeCount] = useState(0);
+  const [api] = useState<GameApi>(() => providedApi ?? createGameApi());
+  const syncRef = useRef<{ gameId: string; sync: GameSync } | null>(null);
+  const localChangeRef = useRef(false);
+  // Read synchronously by dispatch, before React re-renders with the state.
   const storageConflictRef = useRef(false);
-  const storageConflict = conflictingGame !== null;
-  const [storageError, setStorageError] = useState(false);
+
+  const storageConflict = syncState?.status === "conflict";
+  const unsent = syncState?.status === "unsent";
+  const storageError = unsent || deviceSaveFailed;
 
   useEffect(() => {
     setStorageReady(true);
+    return () => syncRef.current?.sync.stop();
   }, []);
 
-  useEffect(() => {
-    if (!storageReady || !game || storageConflict) return;
-    try {
-      createBrowserGameRepository().save(toPersistedGame(game));
-      setStorageError(false);
-    } catch {
-      setStorageError(true);
-    }
-  }, [game, storageConflict, storageReady]);
+  const stopSync = useCallback(() => {
+    syncRef.current?.sync.stop();
+    syncRef.current = null;
+    localChangeRef.current = false;
+    storageConflictRef.current = false;
+    setSyncState(null);
+  }, []);
 
-  useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (
-        event.key !== DEFAULT_GAME_STORAGE_KEY ||
-        event.newValue === null ||
-        !game
-      ) {
-        return;
-      }
-
-      let externalGame: PersistedGameV2;
-      try {
-        externalGame = parseStoredGame(event.newValue);
-      } catch {
-        return;
-      }
-
-      if (
-        externalGame.id !== game.id ||
-        sameRecordedGame(externalGame, toPersistedGame(game))
-      ) {
-        return;
-      }
-
-      storageConflictRef.current = true;
-      setConflictingGame(externalGame);
-    };
-
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, [game, storageConflictRef]);
-
-  const dispatch = useCallback(
-    (action: GameAction): boolean => {
-      if (
-        storageConflictRef.current &&
-        action.type !== "LOAD_GAME" &&
-        action.type !== "RESET_GAME"
-      ) {
-        return false;
-      }
-      reducerDispatch(action);
-      return true;
+  const startSync = useCallback(
+    (gameId: string, baseVersion: number, pendingGame?: SharedGame) => {
+      stopSync();
+      const sync = createGameSync({
+        api,
+        gameId,
+        baseVersion,
+        pendingGame,
+        pollIntervalMs,
+        retryDelayMs,
+        shouldPoll: canPoll,
+        createMutationId: generateId,
+        onStateChange: (state) => {
+          if (syncRef.current?.sync !== sync) return;
+          storageConflictRef.current = state.status === "conflict";
+          setSyncState(state);
+        },
+        onRemoteGame: (remoteGame) => {
+          if (syncRef.current?.sync !== sync) return;
+          reducerDispatch({ type: "LOAD_GAME", game: remoteGame });
+        },
+      });
+      syncRef.current = { gameId, sync };
+      setSyncState({
+        status: pendingGame ? "saving" : "synced",
+        baseVersion,
+      });
+      sync.start();
     },
-    [storageConflictRef]
+    [api, pollIntervalMs, retryDelayMs, stopSync]
   );
 
+  // The device copy is written on every change; the server is the source of
+  // truth, and the copy is what survives a lost connection or a reload.
+  useEffect(() => {
+    if (!storageReady || !game) return;
+    const active = syncRef.current?.gameId === game.id ? syncRef.current : null;
+    const persistedGame = toPersistedGame(game);
+
+    if (active && localChangeRef.current) {
+      localChangeRef.current = false;
+      active.sync.push(toSharedGame(persistedGame));
+    }
+    try {
+      createBrowserGameRepository().save(persistedGame);
+      setDeviceSaveFailed(false);
+    } catch {
+      setDeviceSaveFailed(true);
+    }
+  }, [game, localChangeCount, storageReady]);
+
+  useEffect(() => {
+    if (!syncState || !syncRef.current || syncState.status === "conflict") {
+      return;
+    }
+    try {
+      createBrowserSyncMetaStore().set(syncRef.current.gameId, {
+        baseVersion: syncState.baseVersion,
+        dirty: syncState.status !== "synced",
+      });
+    } catch {
+      setDeviceSaveFailed(true);
+    }
+  }, [syncState]);
+
+  useEffect(() => {
+    const retry = () => syncRef.current?.sync.retryNow();
+    const retryWhenVisible = () => {
+      if (document.visibilityState === "visible") retry();
+    };
+    window.addEventListener("online", retry);
+    document.addEventListener("visibilitychange", retryWhenVisible);
+    return () => {
+      window.removeEventListener("online", retry);
+      document.removeEventListener("visibilitychange", retryWhenVisible);
+    };
+  }, []);
+
+  const dispatch = useCallback((action: GameAction): boolean => {
+    const isLocalChange =
+      action.type !== "LOAD_GAME" && action.type !== "RESET_GAME";
+    if (storageConflictRef.current && isLocalChange) return false;
+    if (isLocalChange) {
+      localChangeRef.current = true;
+      syncRef.current?.sync.markDirty();
+      setLocalChangeCount((count) => count + 1);
+    }
+    reducerDispatch(action);
+    return true;
+  }, []);
+
   const retrySave = useCallback(() => {
-    if (!game || storageConflictRef.current) return;
+    syncRef.current?.sync.retryNow();
+    if (!game) return;
     try {
       createBrowserGameRepository().save(toPersistedGame(game));
-      setStorageError(false);
+      setDeviceSaveFailed(false);
     } catch {
-      setStorageError(true);
+      setDeviceSaveFailed(true);
     }
   }, [game]);
 
-  const loadGame = useCallback(
-    (gameId: string) => {
-      const storedGame = createBrowserGameRepository().find(gameId);
-      if (!storedGame) return false;
-      storageConflictRef.current = false;
-      setConflictingGame(null);
-      reducerDispatch({ type: "LOAD_GAME", game: storedGame });
-      return true;
+  const register = useCallback(
+    (newGame: NewGame) =>
+      registerGame(
+        api,
+        { id: "", status: "live", events: [], ...newGame },
+        generateId
+      ),
+    [api]
+  );
+
+  const createGame = useCallback<GameContextValue["createGame"]>(
+    async (newGame) => {
+      const registered = await register(newGame);
+      if (!registered) return null;
+      reducerDispatch({ type: "LOAD_GAME", game: registered.game });
+      startSync(registered.game.id, registered.version);
+      return registered.game.id;
     },
-    [storageConflictRef]
+    [register, startSync]
+  );
+
+  const importGames = useCallback<GameContextValue["importGames"]>(
+    async (games) => {
+      let importedCount = 0;
+      for (const archivedGame of games) {
+        const registered = await register(toSharedGame(archivedGame));
+        if (!registered) continue;
+        createBrowserGameRepository().importGames([registered.game]);
+        createBrowserSyncMetaStore().set(registered.game.id, {
+          baseVersion: registered.version,
+          dirty: false,
+        });
+        importedCount += 1;
+      }
+      return importedCount;
+    },
+    [register]
+  );
+
+  const loadGame = useCallback(
+    async (gameId: string): Promise<LoadGameResult> => {
+      const deviceGame = createBrowserGameRepository().find(gameId);
+      const meta = createBrowserSyncMetaStore().get(gameId);
+      if (deviceGame && meta) {
+        reducerDispatch({ type: "LOAD_GAME", game: deviceGame });
+        startSync(
+          gameId,
+          meta.baseVersion,
+          meta.dirty ? toSharedGame(deviceGame) : undefined
+        );
+        return "loaded";
+      }
+
+      const fetched = await api.fetch(gameId);
+      if (fetched.status !== "found") {
+        return fetched.status === "notFound" ? "notFound" : "unavailable";
+      }
+      reducerDispatch({ type: "LOAD_GAME", game: fetched.game });
+      startSync(gameId, fetched.version);
+      return "loaded";
+    },
+    [api, startSync]
   );
 
   const resetGame = useCallback(() => {
     createBrowserGameRepository().clearActive();
-    storageConflictRef.current = false;
-    setConflictingGame(null);
+    stopSync();
     reducerDispatch({ type: "RESET_GAME" });
-  }, [storageConflictRef]);
+  }, [stopSync]);
 
   const reloadConflictingGame = useCallback(() => {
-    if (!conflictingGame) return;
-    storageConflictRef.current = false;
-    reducerDispatch({ type: "LOAD_GAME", game: conflictingGame });
-    setConflictingGame(null);
-  }, [conflictingGame, storageConflictRef]);
+    const accepted = syncRef.current?.sync.acceptRemote();
+    if (!accepted) return;
+    reducerDispatch({ type: "LOAD_GAME", game: accepted.game });
+  }, []);
 
   const addEvent = useCallback(
     (event: GameEvent) => {
@@ -239,6 +362,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         storageError,
         dispatch,
         retrySave,
+        createGame,
+        importGames,
         loadGame,
         resetGame,
         reloadConflictingGame,
@@ -248,7 +373,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     >
       {children}
       {storageError && !storageConflict && (
-        <StorageFailureAlert onRetry={retrySave} />
+        <StorageFailureAlert unsent={unsent} onRetry={retrySave} />
       )}
       {storageConflict && (
         <EditingConflictAlert onReload={reloadConflictingGame} />

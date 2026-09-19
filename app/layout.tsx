@@ -1,10 +1,10 @@
-import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
 import { NetworkStatus } from "@/components/network-status";
 import { AppProviders } from "@/components/app-providers";
+import { PrivateAnalytics } from "@/components/private-analytics";
 
 export const metadata: Metadata = {
   title: "スコアブッくん - 野球スコアラー",
@@ -35,7 +35,7 @@ export default function RootLayout({
         <NetworkStatus />
         <Toaster position="bottom-center" richColors closeButton />
         <ServiceWorkerRegistration />
-        <Analytics />
+        <PrivateAnalytics />
       </body>
     </html>
   );
