@@ -2,6 +2,7 @@ import type {
   GameConfig,
   GameEvent,
   Snapshot,
+  TeamSide,
   TimelineEntry,
   Violation,
 } from "../domain/types";
@@ -59,5 +60,12 @@ export type GameAction =
   | { type: "UNDO_LAST_EVENT" }
   | { type: "REDO_LAST_EVENT" }
   | { type: "RESUME_GAME" }
+  /** Roster edits are not plays, so they stay outside undo and redo. */
+  | {
+      type: "ADD_BENCH_PLAYER";
+      team: TeamSide;
+      player: { id: string; name: string };
+    }
+  | { type: "RENAME_PLAYER"; playerId: string; name: string }
   | { type: "RESET_GAME" }
   | { type: "LOAD_GAME"; game: PersistedGameV2 };

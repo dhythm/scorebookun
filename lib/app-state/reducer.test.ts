@@ -610,3 +610,74 @@ describe("app-state selectors", () => {
     expect(toPersistedGame(state!)).not.toHaveProperty("manualEnded");
   });
 });
+
+describe("roster edits during a game", () => {
+  it("adds a bench player who can then enter the game", () => {
+    const game = reduce([
+      { type: "LOAD_GAME", game: persistedGame([out("o1", "away-1")]) },
+      {
+        type: "ADD_BENCH_PLAYER",
+        team: "away",
+        player: { id: "away-late", name: "遅れて来た選手" },
+      },
+      {
+        type: "ADD_EVENT",
+        event: {
+          id: "ph",
+          kind: "substitution",
+          team: "away",
+          inPlayerId: "away-late",
+          outPlayerId: "away-2",
+          role: "pinchHitter",
+        },
+      },
+    ]);
+
+    expect(game?.config.teams.away.benchPlayers).toEqual([
+      { id: "away-late", name: "遅れて来た選手", order: 3, position: null },
+    ]);
+    expect(game?.currentState.activeLineup.away).toEqual([
+      "away-1",
+      "away-late",
+    ]);
+    expect(game?.events).toHaveLength(2);
+    expect(toPersistedGame(game!).config.teams.away.benchPlayers).toHaveLength(
+      1
+    );
+  });
+
+  it("ignores a blank name or an id that is already on a roster", () => {
+    const loaded = reduce([{ type: "LOAD_GAME", game: persistedGame() }]);
+
+    expect(
+      gameReducer(loaded, {
+        type: "ADD_BENCH_PLAYER",
+        team: "away",
+        player: { id: "new", name: "   " },
+      })
+    ).toBe(loaded);
+    expect(
+      gameReducer(loaded, {
+        type: "ADD_BENCH_PLAYER",
+        team: "away",
+        player: { id: "home-1", name: "重複" },
+      })
+    ).toBe(loaded);
+  });
+
+  it("renames a player without touching the recorded plays", () => {
+    const base = persistedGame([out("o1", "away-1")]);
+    base.config.teams.away.startingPitcherId = "away-1";
+    base.config.teams.away.startingPitcherName = "away 1";
+
+    const game = reduce([
+      { type: "LOAD_GAME", game: base },
+      { type: "RENAME_PLAYER", playerId: "away-1", name: " 山田 " },
+    ]);
+
+    expect(game?.config.teams.away.players[0].name).toBe("山田");
+    expect(game?.config.teams.away.startingPitcherName).toBe("山田");
+    expect(game?.events).toEqual(base.events);
+    expect(game?.undoHistory).toHaveLength(1);
+  });
+});

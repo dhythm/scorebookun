@@ -1,5 +1,11 @@
 import { replay } from "../domain/replay";
-import type { GameEvent, Violation } from "../domain/types";
+import type {
+  GameConfig,
+  GameEvent,
+  Player,
+  Team,
+  Violation,
+} from "../domain/types";
 import type {
   DeletedEvent,
   GameRevision,
@@ -100,6 +106,19 @@ function fromRevision(
       redoHistory,
     }
   );
+}
+
+/** Applies a roster edit, which changes no play and no edit history. */
+function withConfig(state: AppGame, config: GameConfig): AppGame {
+  return deriveGame({ ...persistedInput(state), config }, state.manualEnded, {
+    deletedEvents: state.deletedEvents,
+    undoHistory: state.undoHistory,
+    redoHistory: state.redoHistory,
+  });
+}
+
+function rosterOf(team: Team): Player[] {
+  return [...team.players, ...(team.benchPlayers ?? [])];
 }
 
 function persistedInput(
@@ -294,6 +313,61 @@ export function gameReducer(
         [...state.undoHistory, currentRevision(state)].slice(-MAX_EDIT_HISTORY),
         state.redoHistory.slice(0, -1)
       );
+
+    case "ADD_BENCH_PLAYER": {
+      if (!state) return null;
+      const name = action.player.name.trim();
+      const { away, home } = state.config.teams;
+      const idTaken = [...rosterOf(away), ...rosterOf(home)].some(
+        (player) => player.id === action.player.id
+      );
+      if (!name || idTaken) return state;
+      const team = state.config.teams[action.team];
+      const benchPlayers = team.benchPlayers ?? [];
+      return withConfig(state, {
+        ...state.config,
+        teams: {
+          ...state.config.teams,
+          [action.team]: {
+            ...team,
+            benchPlayers: [
+              ...benchPlayers,
+              {
+                id: action.player.id,
+                name,
+                order: team.players.length + benchPlayers.length + 1,
+                position: null,
+              },
+            ],
+          },
+        },
+      });
+    }
+
+    case "RENAME_PLAYER": {
+      if (!state) return null;
+      const name = action.name.trim();
+      if (!name) return state;
+      const rename = (player: Player): Player =>
+        player.id === action.playerId ? { ...player, name } : player;
+      const renameIn = (team: Team): Team => ({
+        ...team,
+        players: team.players.map(rename),
+        ...(team.benchPlayers
+          ? { benchPlayers: team.benchPlayers.map(rename) }
+          : {}),
+        ...(team.startingPitcherId === action.playerId
+          ? { startingPitcherName: name }
+          : {}),
+      });
+      return withConfig(state, {
+        ...state.config,
+        teams: {
+          away: renameIn(state.config.teams.away),
+          home: renameIn(state.config.teams.home),
+        },
+      });
+    }
 
     case "RESUME_GAME":
       if (!state) return null;
