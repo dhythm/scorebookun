@@ -14,12 +14,12 @@
     "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm knip && pnpm test && pnpm build",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "db:up": "docker compose up --detach --wait postgres",
-    "db:down": "docker compose down",
+    "db:up": "tsx scripts/compose.ts up --detach --wait postgres",
+    "db:down": "tsx scripts/compose.ts down",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/db-migrate.ts",
     "db:seed": "tsx scripts/db-seed.ts",
-    "db:reset": "docker compose down --volumes && pnpm db:up && pnpm db:migrate && pnpm db:seed"
+    "db:reset": "tsx scripts/compose.ts down --volumes && pnpm db:up && pnpm db:migrate && pnpm db:seed"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.8",

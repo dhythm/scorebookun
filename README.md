@@ -103,14 +103,15 @@
 
 ```bash
 pnpm install
-cp .env.example .env   # 初回のみ
+cp .env.example .env.local   # 初回のみ
 pnpm db:reset          # ボリューム破棄 → 起動 → マイグレーション → シード
 pnpm dev
 ```
 
 `http://localhost:3000` を開きます。2回目以降は `pnpm db:up && pnpm dev` だけで構いません。
 
-- 5432番ポートが使用中の場合は、`.env` の `POSTGRES_PORT` と `DATABASE_URL` 内のポート番号を同じ空き番号へ変更してください。
+- 環境変数は Next.js と同じく `.env.local` → `.env` の優先順で読みます（シェルで指定した値が最優先）。`pnpm dev` だけでなく `pnpm db:*` も同じファイルを読むので、どちらか一方だけで動きます。
+- 5432番ポートが使用中の場合は、`.env.local` の `POSTGRES_PORT` と `DATABASE_URL` 内のポート番号を同じ空き番号へ変更してください。
 - `drizzle/` のマイグレーションが作り直された・追加されたブランチへ切り替えた後は、`pnpm db:reset`（データを捨ててよい場合）または `pnpm db:migrate` を実行してください。
 
 | コマンド           | 内容                                                              |
@@ -129,7 +130,7 @@ pnpm install
 DATABASE_DRIVER=pglite PGLITE_DATA_DIR= pnpm dev
 ```
 
-- `.env` は不要です（コマンドで渡した環境変数が `.env` より優先されます）。
+- 環境変数ファイルは不要です（コマンドで渡した環境変数がファイルより優先されます）。
 - データベースはNext.jsのプロセス内のメモリ上に作られ、最初のAPIアクセス時にマイグレーションとシード試合の投入が自動で行われます。サーバーを止めるとデータは消えます。
 - データを残したい場合は `PGLITE_DATA_DIR=.pglite` を指定します。この場合シードは自動投入されないため、**devサーバーを止めた状態で** `pnpm db:migrate && pnpm db:seed` を実行してください（PGliteのデータディレクトリは同時に1プロセスしか開けません）。
 

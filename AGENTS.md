@@ -96,8 +96,10 @@ The app needs a database. Details are in the "セットアップ" section of `RE
 
 - Without Docker (agent sandboxes): `DATABASE_DRIVER=pglite PGLITE_DATA_DIR= pnpm dev`.
   The database is in memory, migrated and seeded automatically on the first API request, and gone when the server stops.
-- With Docker: `cp .env.example .env` once, then `pnpm db:reset` and `pnpm dev`.
-  If port 5432 is taken, change `POSTGRES_PORT` and the port inside `DATABASE_URL` in `.env`.
+- With Docker: `cp .env.example .env.local` once, then `pnpm db:reset` and `pnpm dev`.
+  If port 5432 is taken, change `POSTGRES_PORT` and the port inside `DATABASE_URL` in `.env.local`.
+  `pnpm dev` and every `pnpm db:*` script read `.env.local` first, then `.env`; shell variables win over both.
+  Env files hold credentials: never print or commit them.
 - Seed games have fixed URLs such as `/games/seed-live-slugfest` and `/games/seed-finished-walk-off`
   (full list in `README.md`). Use them instead of clicking through game setup when verifying a screen.
 - Only one `next dev` can run per directory. If a dev server is already running (often the user's), do not kill it;

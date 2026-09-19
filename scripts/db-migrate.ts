@@ -1,12 +1,9 @@
-import { existsSync } from "node:fs";
-
 import { createDatabase } from "../lib/db/client";
 import { resolveDatabaseConfig } from "../lib/db/config";
+import { loadEnvFiles } from "./env-files";
 
 async function main() {
-  if (existsSync(".env")) {
-    process.loadEnvFile(".env");
-  }
+  loadEnvFiles();
 
   const config = resolveDatabaseConfig(process.env);
   const database = await createDatabase(config);

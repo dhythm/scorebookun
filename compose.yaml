@@ -2,9 +2,9 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:?copy .env.example to .env}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?copy .env.example to .env}
-      POSTGRES_DB: ${POSTGRES_DB:?copy .env.example to .env}
+      POSTGRES_USER: ${POSTGRES_USER:?copy .env.example to .env.local}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?copy .env.example to .env.local}
+      POSTGRES_DB: ${POSTGRES_DB:?copy .env.example to .env.local}
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
