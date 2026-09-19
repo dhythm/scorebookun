@@ -398,8 +398,37 @@ export function LiveScoring() {
           <SubstitutionSheet
             game={game}
             onSubmit={(event) => {
-              if (recordEvent(event, "選手交代を記録しました")) {
+              if (
+                recordEvent(
+                  event,
+                  event.kind === "positionChange"
+                    ? "守備位置の変更を記録しました"
+                    : "選手交代を記録しました"
+                )
+              ) {
                 setSubstitutionOpen(false);
+              }
+            }}
+            onAddBenchPlayer={(team, name) => {
+              const id = generateId();
+              if (
+                !dispatch({
+                  type: "ADD_BENCH_PLAYER",
+                  team,
+                  player: { id, name },
+                })
+              ) {
+                toast.error("選手を追加できませんでした。");
+                return null;
+              }
+              toast.success(`${name}を控えに追加しました`);
+              return id;
+            }}
+            onRenamePlayer={(playerId, name) => {
+              if (dispatch({ type: "RENAME_PLAYER", playerId, name })) {
+                toast.success("選手名を修正しました");
+              } else {
+                toast.error("選手名を修正できませんでした。");
               }
             }}
           />

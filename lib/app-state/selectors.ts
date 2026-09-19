@@ -1,4 +1,5 @@
 import type {
+  FieldingPosition,
   Player,
   Snapshot,
   TeamSide,
@@ -55,6 +56,27 @@ export function getNextBatter(game: AppGame): Player | null {
   const batterIndex = game.currentState.currentBatterIndex[teamSide];
   const playerId = activePlayerIds[(batterIndex + 1) % activePlayerIds.length];
   return roster.find((player) => player.id === playerId) ?? null;
+}
+
+/**
+ * Every position a player has fielded, oldest first. A player who left the
+ * game keeps their history, so the scorebook can still show where they played.
+ */
+export function getFieldingPositionHistory(
+  game: AppGame,
+  teamSide: TeamSide,
+  playerId: string
+): FieldingPosition[] {
+  const snapshots = [
+    game.timeline[0]?.before ?? game.currentState,
+    ...game.timeline.filter((entry) => entry.applied).map(({ after }) => after),
+  ];
+  const history: FieldingPosition[] = [];
+  for (const snapshot of snapshots) {
+    const position = snapshot.fieldingPositions[teamSide][playerId];
+    if (position && history.at(-1) !== position) history.push(position);
+  }
+  return history;
 }
 
 export function getTimelineEntry(

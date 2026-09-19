@@ -3,7 +3,10 @@
 import { Fragment } from "react";
 import { cn } from "@/lib/utils";
 import type { AppGame } from "@/lib/app-state/types";
-import { getEffectiveInningCount } from "@/lib/app-state/selectors";
+import {
+  getEffectiveInningCount,
+  getFieldingPositionHistory,
+} from "@/lib/app-state/selectors";
 import type { FieldingPosition, TeamSide } from "@/lib/domain/types";
 import {
   formatBattingAverage,
@@ -22,9 +25,10 @@ interface BattingScorebookTableProps {
   printMode?: boolean;
 }
 
-function positionLabel(position: FieldingPosition | null | undefined): string {
-  if (!position) return "—";
-  return formatFieldingPosition(position);
+/** A player who moved shows each position in order, for example 遊投. */
+function positionsLabel(positions: readonly FieldingPosition[]): string {
+  if (positions.length === 0) return "—";
+  return positions.map(formatFieldingPosition).join("");
 }
 
 export function BattingScorebookTable({
@@ -187,7 +191,9 @@ export function BattingScorebookTable({
                     </span>
                   </td>
                   <td className="sticky left-36 z-10 w-8 min-w-8 border-r border-border bg-card px-0 py-1.5 text-center text-[11px] text-muted-foreground sm:text-xs">
-                    {positionLabel(player.position)}
+                    {positionsLabel(
+                      getFieldingPositionHistory(game, teamSide, player.id)
+                    )}
                   </td>
                   <td className={tdStat}>{stats.atBats}</td>
                   <td className={tdStat}>{stats.hits}</td>

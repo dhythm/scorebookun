@@ -7,7 +7,10 @@ import type {
   FieldingPosition,
   GameControlEvent,
   GameNoteEvent,
+  PositionChange,
+  PositionChangeEvent,
   RunnerMovement,
+  RunnerPlacementEvent,
   Runners,
   SubstitutionEvent,
   SubstitutionRole,
@@ -184,12 +187,14 @@ export function createSubstitutionEvent({
   inPlayerId,
   outPlayerId,
   role,
+  position,
 }: {
   id: string;
   team: TeamSide;
   inPlayerId: string;
   outPlayerId: string;
   role: SubstitutionRole;
+  position?: FieldingPosition;
 }): SubstitutionEvent {
   return {
     id,
@@ -198,7 +203,30 @@ export function createSubstitutionEvent({
     inPlayerId,
     outPlayerId,
     role,
+    ...(position ? { position } : {}),
   };
+}
+
+export function createPositionChangeEvent({
+  id,
+  team,
+  changes,
+}: {
+  id: string;
+  team: TeamSide;
+  changes: PositionChange[];
+}): PositionChangeEvent {
+  return { id, kind: "positionChange", team, changes };
+}
+
+export function createRunnerPlacementEvent({
+  id,
+  runners,
+}: {
+  id: string;
+  runners: Runners;
+}): RunnerPlacementEvent {
+  return { id, kind: "runnerPlacement", runners: { ...runners } };
 }
 
 export function createGameControlEvent({

@@ -9,6 +9,7 @@ import {
 } from "./reducer";
 import {
   getCurrentBatter,
+  getFieldingPositionHistory,
   getNextBatter,
   getTimelineEntry,
   toPersistedGame,
@@ -679,5 +680,57 @@ describe("roster edits during a game", () => {
     expect(game?.config.teams.away.startingPitcherName).toBe("山田");
     expect(game?.events).toEqual(base.events);
     expect(game?.undoHistory).toHaveLength(1);
+  });
+});
+
+describe("getFieldingPositionHistory", () => {
+  it("lists every position a player has fielded, in order", () => {
+    const base = persistedGame();
+    base.config.teams.home.players[0].position = "pitcher";
+    base.config.teams.home.players[1].position = "short";
+    base.config.teams.home.benchPlayers = [
+      { id: "home-bench", name: "home bench", order: 3 },
+    ];
+
+    const game = reduce([
+      { type: "LOAD_GAME", game: base },
+      {
+        type: "ADD_EVENT",
+        event: {
+          id: "swap",
+          kind: "positionChange",
+          team: "home",
+          changes: [
+            { playerId: "home-2", position: "pitcher" },
+            { playerId: "home-1", position: "short" },
+          ],
+        },
+      },
+      {
+        type: "ADD_EVENT",
+        event: {
+          id: "sub",
+          kind: "substitution",
+          team: "home",
+          inPlayerId: "home-bench",
+          outPlayerId: "home-1",
+          role: "fielder",
+          position: "left",
+        },
+      },
+    ])!;
+
+    expect(getFieldingPositionHistory(game, "home", "home-1")).toEqual([
+      "pitcher",
+      "short",
+    ]);
+    expect(getFieldingPositionHistory(game, "home", "home-2")).toEqual([
+      "short",
+      "pitcher",
+    ]);
+    expect(getFieldingPositionHistory(game, "home", "home-bench")).toEqual([
+      "left",
+    ]);
+    expect(getFieldingPositionHistory(game, "away", "away-1")).toEqual([]);
   });
 });

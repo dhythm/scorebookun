@@ -253,4 +253,112 @@ describe("substitution UI", () => {
       })
     );
   });
+
+  it("lets a fielder already in the lineup take the mound", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    const positioned = structuredClone(config);
+    positioned.teams.home.players = [
+      { id: "home-1", name: "相手打者", order: 1, position: "pitcher" },
+      { id: "home-2", name: "相手遊撃", order: 2, position: "short" },
+    ];
+    positioned.teams.home.startingPitcherId = "home-1";
+    const game = gameReducer(null, {
+      type: "LOAD_GAME",
+      game: {
+        id: "game",
+        date: "2026-07-27T00:00:00.000Z",
+        status: "live",
+        config: positioned,
+        events: [],
+      },
+    })!;
+    render(<SubstitutionSheet game={game} onSubmit={onSubmit} />);
+
+    await user.click(screen.getByRole("button", { name: "守備位置変更" }));
+    await user.click(screen.getByRole("button", { name: "後攻・後攻" }));
+    await user.click(
+      screen.getByRole("combobox", { name: "相手遊撃の守備位置" })
+    );
+    await user.click(screen.getByRole("option", { name: "投手 (P)" }));
+    await user.click(
+      screen.getByRole("combobox", { name: "相手打者の守備位置" })
+    );
+    await user.click(screen.getByRole("option", { name: "遊撃 (SS)" }));
+    await user.click(screen.getByRole("button", { name: "守備位置を記録" }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "positionChange",
+        team: "home",
+        changes: [
+          { playerId: "home-1", position: "short" },
+          { playerId: "home-2", position: "pitcher" },
+        ],
+      })
+    );
+  });
+
+  it("adds a player who was not on the roster and selects them", async () => {
+    const user = userEvent.setup();
+    const onAddBenchPlayer = vi.fn(() => "new-id");
+    render(
+      <SubstitutionSheet
+        game={createGame([])}
+        onSubmit={vi.fn()}
+        onAddBenchPlayer={onAddBenchPlayer}
+      />
+    );
+
+    await user.type(
+      screen.getByRole("textbox", { name: "新しい選手を追加" }),
+      " 助っ人 "
+    );
+    await user.click(screen.getByRole("button", { name: "選手を追加" }));
+
+    expect(onAddBenchPlayer).toHaveBeenCalledWith("away", "助っ人");
+  });
+
+  it("renames a player from the substitution sheet", async () => {
+    const user = userEvent.setup();
+    const onRenamePlayer = vi.fn();
+    render(
+      <SubstitutionSheet
+        game={createGame([])}
+        onSubmit={vi.fn()}
+        onRenamePlayer={onRenamePlayer}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "選手名の修正" }));
+    await user.click(screen.getByRole("combobox", { name: "修正する選手" }));
+    await user.click(screen.getByRole("option", { name: "二番打者" }));
+    const input = screen.getByRole("textbox", { name: "正しい選手名" });
+    await user.clear(input);
+    await user.type(input, "鈴木");
+    await user.click(screen.getByRole("button", { name: "選手名を保存" }));
+
+    expect(onRenamePlayer).toHaveBeenCalledWith("away-2", "鈴木");
+  });
+
+  it("records the position a defensive substitute takes", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    render(<SubstitutionSheet game={createGame([])} onSubmit={onSubmit} />);
+
+    await user.click(screen.getByRole("button", { name: "守備交代" }));
+    await user.click(screen.getByRole("combobox", { name: "退く選手" }));
+    await user.click(screen.getByRole("option", { name: "先頭打者" }));
+    await user.click(screen.getByRole("combobox", { name: "入る選手" }));
+    await user.click(screen.getByRole("option", { name: "代打者" }));
+    await user.click(
+      screen.getByRole("combobox", { name: "入る選手の守備位置" })
+    );
+    await user.click(screen.getByRole("option", { name: "左翼 (LF)" }));
+    await user.click(screen.getByRole("button", { name: "交代を記録" }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      expect.objectContaining({ role: "fielder", position: "left" })
+    );
+  });
 });
