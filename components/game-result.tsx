@@ -25,6 +25,7 @@ import { exportGameAsJson, exportGameAsText } from "@/lib/export/game-log";
 import { getPitcherStats } from "@/lib/domain/pitching";
 import { GameHistory } from "@/components/game-history";
 import { ShareGameButton } from "@/components/share-game-button";
+import { HomeLink } from "@/components/home-link";
 import { FeedbackDialog } from "@/components/feedback-dialog";
 import {
   AlertDialog,
@@ -314,14 +315,14 @@ export function GameResult() {
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 flex items-center justify-between border-b border-primary-foreground/10 bg-primary px-4 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] text-primary-foreground shadow-sm print:hidden">
-        <h1 className="flex items-center gap-2 text-lg font-extrabold">
-          <span className="text-xl">&#9918;</span>
-          試合終了
-        </h1>
+        <div className="flex min-w-0 items-center gap-1">
+          <HomeLink />
+          <h1 className="text-lg font-extrabold">試合終了</h1>
+        </div>
         <div className="flex items-center gap-0.5">
           <ShareGameButton />
-          <FeedbackDialog />
           <DisplaySettingsDialog />
+          <FeedbackDialog />
         </div>
       </header>
 
