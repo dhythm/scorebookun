@@ -181,6 +181,18 @@ Drizzle ORMでPostgreSQLに接続します。接続先は環境変数 `DATABASE_
 
 起動手順は[セットアップ](#セットアップ)を参照してください。`neon` への `pnpm db:migrate` は本番データベースを変更するため、実行前に必ず接続先を確認してください。
 
+`pnpm db:migrate` は `DATABASE_URL_UNPOOLED` があればそちら（プーラーを通さない直結URL）を使い、なければ `DATABASE_URL` を使います。
+
+#### デプロイ（Vercel + Neon）
+
+1. Vercelにリポジトリをインポートします。Build Commandは既定のままにしてください。`vercel-build` スクリプト（`pnpm db:migrate && next build`）が自動で使われます。
+2. VercelのStorageからNeonを追加してプロジェクトに接続します。`DATABASE_URL`（プーラー経由）と `DATABASE_URL_UNPOOLED`（直結）が自動で設定されます。Neonを別途作成した場合は、この2つを手動で設定してください。
+3. 環境変数 `DATABASE_DRIVER=neon` を追加します。
+
+デプロイのたびに、ビルドの最初で未適用のマイグレーションがその環境の `DATABASE_URL` に適用されます。失敗するとビルドが止まり、古いデプロイがそのまま残ります。
+
+Preview環境に本番と同じ `DATABASE_URL` を設定すると、ブランチのマイグレーションが本番データベースに適用されます。Neon連携のPreviewブランチ機能でデータベースを分けるか、環境変数をProductionのみに設定してください（後者ではPreviewのビルドは失敗します）。
+
 #### スキーマ
 
 ```mermaid

@@ -1,11 +1,11 @@
 import { createDatabase } from "../lib/db/client";
-import { resolveDatabaseConfig } from "../lib/db/config";
+import { resolveMigrationConfig } from "../lib/db/config";
 import { loadEnvFiles } from "./env-files";
 
 async function main() {
   loadEnvFiles();
 
-  const config = resolveDatabaseConfig(process.env);
+  const config = resolveMigrationConfig(process.env);
   const database = await createDatabase(config);
   try {
     await database.migrate();
