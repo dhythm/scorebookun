@@ -51,13 +51,13 @@ export function GameNoteDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
-          <div className="flex flex-wrap gap-2">
+          <div className="grid grid-cols-3 gap-2">
             {NOTE_PRESETS.map((preset) => (
               <Button
                 key={preset}
                 type="button"
                 variant="outline"
-                className="min-h-11"
+                className="min-h-11 w-full px-2"
                 onClick={() => setText(preset)}
               >
                 {preset}
