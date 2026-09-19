@@ -17,7 +17,7 @@ import {
 import { gamePath } from "@/lib/app-state/routes";
 import { DEVELOPMENT_GAME_SCENARIOS } from "@/lib/dev-fixtures/game-scenarios";
 import { shouldShowDevelopmentTools } from "@/lib/development-mode";
-import { createBrowserGameRepository } from "@/lib/storage/local-storage";
+import { useGame } from "@/lib/game-context";
 
 export function DevelopmentScenarioPanel() {
   const router = useRouter();
@@ -25,17 +25,22 @@ export function DevelopmentScenarioPanel() {
     DEVELOPMENT_GAME_SCENARIOS[0]?.id ?? ""
   );
 
+  const { createGame } = useGame();
+
   if (!shouldShowDevelopmentTools()) return null;
 
   const scenario = DEVELOPMENT_GAME_SCENARIOS.find(
     (item) => item.id === scenarioId
   );
 
-  const loadScenario = () => {
+  const loadScenario = async () => {
     if (!scenario) return;
-    const game = scenario.createGame();
-    createBrowserGameRepository().save(game);
-    router.push(gamePath(game.id));
+    const id = await createGame(scenario.createGame());
+    if (!id) {
+      toast.error("検証シナリオを登録できませんでした");
+      return;
+    }
+    router.push(gamePath(id));
     toast.success(`検証シナリオ「${scenario.title}」を読み込みました`);
   };
   return (

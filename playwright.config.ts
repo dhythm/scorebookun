@@ -23,6 +23,8 @@ export default defineConfig({
       ? `pnpm build && pnpm start --port ${PORT}`
       : `pnpm dev --port ${PORT}`,
     url: `http://localhost:${PORT}`,
+    // In-memory PGlite: every run starts from an empty database, no Docker.
+    env: { DATABASE_DRIVER: "pglite", PGLITE_DATA_DIR: "" },
     reuseExistingServer: !isCI,
     timeout: 180_000,
   },

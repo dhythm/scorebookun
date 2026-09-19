@@ -23,17 +23,26 @@ import {
   createBrowserGameRepository,
   type PersistedGameV2,
 } from "@/lib/storage/local-storage";
+import { createBrowserSyncMetaStore } from "@/lib/storage/sync-meta";
 import { parseHistoryArchive } from "@/lib/export/history-archive";
 import { toast } from "sonner";
 
 export function GameHistory() {
-  const { game, resetGame } = useGame();
+  const { game, resetGame, importGames } = useGame();
   const router = useRouter();
   const [games, setGames] = useState<PersistedGameV2[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [deleteGameId, setDeleteGameId] = useState<string | null>(null);
 
-  const refresh = () => setGames(createBrowserGameRepository().list());
+  // Only games known to the server are listed; they reopen by shared URL.
+  const refresh = () => {
+    const syncMeta = createBrowserSyncMetaStore();
+    setGames(
+      createBrowserGameRepository()
+        .list()
+        .filter((storedGame) => syncMeta.get(storedGame.id) !== null)
+    );
+  };
 
   useEffect(() => {
     refresh();
@@ -45,6 +54,7 @@ export function GameHistory() {
     if (!deleteGameId) return;
     const isCurrentGame = game?.id === deleteGameId;
     createBrowserGameRepository().remove(deleteGameId);
+    createBrowserSyncMetaStore().remove(deleteGameId);
     if (isCurrentGame) {
       resetGame();
       router.replace("/");
@@ -56,9 +66,16 @@ export function GameHistory() {
   const handleArchiveImport = async (file: File) => {
     try {
       const importedGames = parseHistoryArchive(await file.text());
-      createBrowserGameRepository().importGames(importedGames);
+      const importedCount = await importGames(importedGames);
       refresh();
-      toast.success(`${importedGames.length}試合を履歴へ取り込みました`);
+      if (importedCount < importedGames.length) {
+        toast.error(
+          `${importedGames.length - importedCount}試合を登録できませんでした。通信環境を確認してください`
+        );
+      }
+      if (importedCount > 0) {
+        toast.success(`${importedCount}試合を履歴へ取り込みました`);
+      }
     } catch {
       toast.error("履歴JSONを取り込めませんでした");
     }
@@ -171,9 +188,9 @@ export function GameHistory() {
             </AlertDialogTitle>
             <AlertDialogDescription>
               {deleteGame
-                ? `${deleteGame.config.teams.away.name} 対 ${deleteGame.config.teams.home.name}（${deleteGame.date.slice(0, 10)}）を削除します。`
-                : "選択した試合を削除します。"}
-              この操作は元に戻せません。
+                ? `${deleteGame.config.teams.away.name} 対 ${deleteGame.config.teams.home.name}（${deleteGame.date.slice(0, 10)}）をこの端末の履歴から外します。`
+                : "選択した試合をこの端末の履歴から外します。"}
+              この端末の履歴から外すだけで、共有URLからは引き続き開けます。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

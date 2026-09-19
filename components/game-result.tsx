@@ -24,6 +24,7 @@ import { toPersistedGame } from "@/lib/app-state/selectors";
 import { exportGameAsJson, exportGameAsText } from "@/lib/export/game-log";
 import { getPitcherStats } from "@/lib/domain/pitching";
 import { GameHistory } from "@/components/game-history";
+import { ShareGameButton } from "@/components/share-game-button";
 import { FeedbackDialog } from "@/components/feedback-dialog";
 import {
   AlertDialog,
@@ -318,6 +319,7 @@ export function GameResult() {
           試合終了
         </h1>
         <div className="flex items-center gap-0.5">
+          <ShareGameButton />
           <FeedbackDialog />
           <DisplaySettingsDialog />
         </div>

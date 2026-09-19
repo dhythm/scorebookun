@@ -2,7 +2,25 @@ import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { createDatabase, type Database } from "./client";
+import type { SharedGame } from "@/lib/sync/shared-game";
+
 import { games } from "./schema";
+
+function gamePayload(id: string): SharedGame {
+  return {
+    id,
+    date: "2026-09-19T00:00:00.000Z",
+    status: "live",
+    config: {
+      regulationInnings: 9,
+      teams: {
+        away: { name: "Away", players: [] },
+        home: { name: "Home", players: [] },
+      },
+    },
+    events: [],
+  };
+}
 
 describe("createDatabase with in-memory PGlite", () => {
   let database: Database;
@@ -17,7 +35,7 @@ describe("createDatabase with in-memory PGlite", () => {
   });
 
   it("applies migrations and round-trips a game payload", async () => {
-    const payload = { schemaVersion: 2, innings: [{ runs: 1 }] };
+    const payload = gamePayload("game-1");
 
     await database.db.insert(games).values({ id: "game-1", payload });
     const [stored] = await database.db
@@ -37,8 +55,12 @@ describe("createDatabase with in-memory PGlite", () => {
   it("rolls back a failed transaction", async () => {
     await expect(
       database.db.transaction(async (transaction) => {
-        await transaction.insert(games).values({ id: "game-2", payload: {} });
-        await transaction.insert(games).values({ id: "game-2", payload: {} });
+        await transaction
+          .insert(games)
+          .values({ id: "game-2", payload: gamePayload("game-2") });
+        await transaction
+          .insert(games)
+          .values({ id: "game-2", payload: gamePayload("game-2") });
       })
     ).rejects.toThrow();
 

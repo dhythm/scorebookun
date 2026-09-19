@@ -1,10 +1,15 @@
-import { jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { integer, jsonb, pgTable, text, timestamp } from "drizzle-orm/pg-core";
 
-// Provisional table that proves the ORM, migration, and driver wiring.
-// Replace or extend it when server-side persistence is designed.
+import type { SharedGame } from "@/lib/sync/shared-game";
+
 export const games = pgTable("games", {
+  // Knowing the id is what grants access, so it must be unguessable.
   id: text("id").primaryKey(),
-  payload: jsonb("payload").notNull(),
+  // Incremented on every accepted save; stale writers are rejected.
+  version: integer("version").notNull().default(1),
+  // Lets a client safely retry a save whose response was lost.
+  lastMutationId: text("last_mutation_id"),
+  payload: jsonb("payload").$type<SharedGame>().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

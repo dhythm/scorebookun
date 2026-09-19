@@ -19,7 +19,7 @@ export function EditingConflictAlert({ onReload }: { onReload: () => void }) {
       >
         <span className="flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden="true" />
-          別のタブでこの試合が更新されました
+          他の人がこの試合を更新しました
         </span>
         <Button
           type="button"
@@ -28,14 +28,21 @@ export function EditingConflictAlert({ onReload }: { onReload: () => void }) {
           className="h-9 border-amber-900 bg-amber-50 text-amber-950 hover:bg-white"
           onClick={onReload}
         >
-          他タブの内容を読み直す
+          最新の内容を読み込む
         </Button>
       </div>
     </>
   );
 }
 
-export function StorageFailureAlert({ onRetry }: { onRetry: () => void }) {
+export function StorageFailureAlert({
+  unsent,
+  onRetry,
+}: {
+  /** The server has not received the latest change (it is retried). */
+  unsent: boolean;
+  onRetry: () => void;
+}) {
   return (
     <div
       role="alert"
@@ -44,7 +51,7 @@ export function StorageFailureAlert({ onRetry }: { onRetry: () => void }) {
     >
       <span className="flex items-center gap-2">
         <DatabaseZap className="h-4 w-4 shrink-0" aria-hidden="true" />
-        この端末に保存されていません
+        {unsent ? "未送信の変更があります" : "この端末に保存されていません"}
       </span>
       <Button
         type="button"
@@ -54,7 +61,7 @@ export function StorageFailureAlert({ onRetry }: { onRetry: () => void }) {
         onClick={onRetry}
       >
         <RefreshCw className="mr-1 h-4 w-4" aria-hidden="true" />
-        保存を再試行
+        {unsent ? "今すぐ再送" : "保存を再試行"}
       </Button>
     </div>
   );
