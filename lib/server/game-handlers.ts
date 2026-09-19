@@ -49,12 +49,40 @@ async function readJsonBody(
   throw new RequestError(400, "invalid_request");
 }
 
+function hasDuplicates(ids: readonly string[]): boolean {
+  return new Set(ids).size !== ids.length;
+}
+
+/**
+ * True when the database would refuse the game. The domain reports duplicate
+ * ids as violations, but rows are keyed by them, so they are refused here
+ * with a 400 instead of failing later as a constraint error.
+ */
+function isUnstorable(game: SharedGame): boolean {
+  const { away, home } = game.config.teams;
+  const playerIds = [away, home].flatMap((team) =>
+    [...team.players, ...(team.benchPlayers ?? [])].map((player) => player.id)
+  );
+  const eventIds = [
+    ...game.events,
+    ...(game.deletedEvents ?? []).map((deleted) => deleted.event),
+  ].map((event) => event.id);
+  return (
+    Number.isNaN(new Date(game.date).getTime()) ||
+    hasDuplicates(playerIds) ||
+    hasDuplicates(eventIds)
+  );
+}
+
 function parseGame(value: unknown): SharedGame {
+  let game: SharedGame;
   try {
-    return parseSharedGame(value);
+    game = parseSharedGame(value);
   } catch {
     throw new RequestError(400, "invalid_request");
   }
+  if (isUnstorable(game)) throw new RequestError(400, "invalid_request");
+  return game;
 }
 
 // Responses carry error codes only, so database details never reach clients.
@@ -67,7 +95,11 @@ async function respond(handler: () => Promise<Response>): Promise<Response> {
     }
     console.error(
       "Game request failed:",
-      error instanceof Error ? error.message : "unknown error"
+      // First line only: driver errors append the query parameters, which
+      // hold what users typed.
+      error instanceof Error
+        ? error.message.split("\n")[0].slice(0, 200)
+        : "unknown error"
     );
     return json(500, { error: "internal_error" });
   }

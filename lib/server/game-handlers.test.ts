@@ -181,6 +181,60 @@ describe("game handlers", () => {
     expect(response.status).toBe(400);
   });
 
+  it.each([
+    ["a date that is not a timestamp", { date: "yesterday" }],
+    [
+      "duplicate event ids",
+      {
+        events: [
+          { id: "same", kind: "note", text: "first" },
+          { id: "same", kind: "note", text: "second" },
+        ],
+      },
+    ],
+    [
+      "an event id reused in the trash",
+      {
+        events: [{ id: "same", kind: "note", text: "first" }],
+        deletedEvents: [
+          { index: 0, event: { id: "same", kind: "note", text: "second" } },
+        ],
+      },
+    ],
+    [
+      "duplicate player ids",
+      {
+        config: {
+          ...config,
+          teams: {
+            away: {
+              name: "Away",
+              players: [{ id: "p1", name: "One", order: 1 }],
+            },
+            home: {
+              name: "Home",
+              players: [{ id: "p1", name: "Uno", order: 1 }],
+            },
+          },
+        },
+      },
+    ],
+  ])("rejects %s before it reaches the database", async (_label, patch) => {
+    const { body } = await create();
+
+    const response = await handleSaveGame(
+      database.db,
+      body.id,
+      jsonRequest("PUT", {
+        baseVersion: 1,
+        mutationId: "mutation-1",
+        game: { ...body.game, ...patch },
+      })
+    );
+
+    expect(response.status).toBe(400);
+  });
+
   it("returns 404 when saving an unknown game", async () => {
     const response = await handleSaveGame(
       database.db,
