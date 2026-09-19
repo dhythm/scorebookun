@@ -151,7 +151,7 @@ export type GameEvent =
 type GameEndReason =
   "homeAheadAfterTop" | "walkOff" | "completedHalf" | "manual";
 
-export interface Score {
+interface Score {
   away: number;
   home: number;
 }
