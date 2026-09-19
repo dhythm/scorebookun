@@ -27,7 +27,6 @@ import { getPitcherStats } from "@/lib/domain/pitching";
 import { GameHistory } from "@/components/game-history";
 import { ShareGameButton } from "@/components/share-game-button";
 import { HomeLink } from "@/components/home-link";
-import { FeedbackDialog } from "@/components/feedback-dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -318,7 +317,6 @@ export function GameResult() {
         <div className="flex items-center gap-0.5">
           <ShareGameButton />
           <DisplaySettingsDialog />
-          <FeedbackDialog />
         </div>
       </header>
 

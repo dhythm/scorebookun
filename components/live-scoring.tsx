@@ -59,7 +59,6 @@ import { toast } from "sonner";
 import { formatViolationMessage } from "@/lib/app-state/feedback";
 import { ShareGameButton } from "@/components/share-game-button";
 import { HomeLink } from "@/components/home-link";
-import { FeedbackDialog } from "@/components/feedback-dialog";
 import { SituationMiniHeader } from "@/components/situation-mini-header";
 import { EventIntegrityAlert } from "@/components/event-integrity-alert";
 import { GameNoteDialog } from "@/components/game-note-dialog";
@@ -216,7 +215,7 @@ export function LiveScoring() {
         <div className="flex min-w-0 items-center gap-1">
           <HomeLink />
           <h1 className="flex items-center gap-2 text-base font-extrabold tracking-tight sm:text-lg">
-            {/* Six 44px actions leave no room for the name on a phone. */}
+            {/* The 44px actions leave no room for the name on a phone. */}
             <span className="sr-only min-[480px]:not-sr-only">
               スコアブッくん
             </span>
@@ -263,14 +262,13 @@ export function LiveScoring() {
           >
             <Flag className="h-5 w-5" />
           </Button>
-          {/* Game actions come first; app-level tools follow, help last. */}
+          {/* Game actions come first; app-level tools follow. */}
           <span
             className="mx-1 h-5 w-px shrink-0 bg-primary-foreground/25"
             aria-hidden="true"
           />
           <ShareGameButton />
           <DisplaySettingsDialog />
-          <FeedbackDialog />
         </div>
       </header>
 
