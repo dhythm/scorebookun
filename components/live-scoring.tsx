@@ -58,6 +58,7 @@ import {
 import { toast } from "sonner";
 import { formatViolationMessage } from "@/lib/app-state/feedback";
 import { ShareGameButton } from "@/components/share-game-button";
+import { AppName } from "@/components/app-name";
 import { HomeLink } from "@/components/home-link";
 import { SituationMiniHeader } from "@/components/situation-mini-header";
 import { EventIntegrityAlert } from "@/components/event-integrity-alert";
@@ -217,7 +218,7 @@ export function LiveScoring() {
           <h1 className="flex items-center gap-2 text-base font-extrabold tracking-tight sm:text-lg">
             {/* The 44px actions leave no room for the name on a phone. */}
             <span className="sr-only min-[480px]:not-sr-only">
-              スコアブッくん
+              <AppName />
             </span>
           </h1>
         </div>
