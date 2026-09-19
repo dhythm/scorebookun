@@ -198,7 +198,7 @@ export function formatEventNotation(event: GameEvent): string {
   }
 }
 
-export function formatRunnerPlacementNotation(
+function formatRunnerPlacementNotation(
   event: Pick<RunnerPlacementEvent, "runners">
 ): string {
   const bases = (["first", "second", "third"] as const)

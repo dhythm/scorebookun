@@ -50,7 +50,7 @@ const BATTER_REACHES_FIRST_RESULTS: ReadonlySet<AtBatResult> = new Set([
  * A batter put out after safely reaching first base is an ordinary tag out,
  * so runs that crossed the plate before it still count.
  */
-export function isBatterOutAfterReachingFirst(
+function isBatterOutAfterReachingFirst(
   result: AtBatResult | undefined,
   movement: RunnerMovement
 ): boolean {
