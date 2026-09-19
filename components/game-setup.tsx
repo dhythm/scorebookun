@@ -2,6 +2,7 @@
 
 import { FeedbackDialog } from "@/components/feedback-dialog";
 import { DisplaySettingsDialog } from "@/components/display-settings-dialog";
+import { AlphaDisclaimer } from "@/components/alpha-disclaimer";
 import { AppName } from "@/components/app-name";
 import { GameHistory } from "@/components/game-history";
 import { Button } from "@/components/ui/button";
@@ -554,6 +555,7 @@ export function GameSetup() {
       </header>
 
       <main className="p-4 pb-24 space-y-4 max-w-lg mx-auto lg:max-w-6xl lg:px-6">
+        <AlphaDisclaimer />
         <GameHistory />
         <h2 className="text-lg font-bold text-foreground">試合を作成</h2>
         <section
