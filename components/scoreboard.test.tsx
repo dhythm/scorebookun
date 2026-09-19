@@ -25,6 +25,17 @@ const game = gameReducer(null, {
 })!;
 
 describe("Scoreboard", () => {
+  it("keeps both team names and total scores available in a named summary", () => {
+    const html = renderToStaticMarkup(
+      <Scoreboard game={game} collapsibleOnMobile />
+    );
+
+    expect(html).toContain('aria-label="現在のスコア"');
+    expect(html).toContain("先攻");
+    expect(html).toContain("後攻");
+    expect(html).toContain("イニングスコア");
+  });
+
   it("starts with the compact mobile scoreboard when collapsible", () => {
     const html = renderToStaticMarkup(
       <Scoreboard game={game} collapsibleOnMobile />

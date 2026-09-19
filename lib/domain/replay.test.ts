@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { replay } from "./replay";
+import { getPitcherReplacementPlayerId, replay } from "./replay";
+import { getPitcherStats } from "./pitching";
 import type {
   AtBatEvent,
   GameConfig,
@@ -903,6 +904,9 @@ describe("replay", () => {
     expect(result.timeline[0].applied).toBe(true);
     expect(result.snapshot.activePitcherId.home).toBe("home-reliever");
     expect(result.snapshot.activeLineup.home).toEqual(["home-1"]);
+    expect(
+      getPitcherReplacementPlayerId(result.snapshot, result.timeline, "home")
+    ).toBe("home-reliever");
     expect(result.violations).toEqual([]);
   });
 
@@ -1056,6 +1060,128 @@ describe("replay fielding positions", () => {
     ).toBeUndefined();
     // The replaced pitcher no longer pitches, but nobody has taken over yet.
     expect(result.snapshot.activePitcherId.away).toBe("away-1");
+  });
+
+  it("replaces a pitcher who was pinch hit for through the substitute's batting slot", () => {
+    const gameConfig = positionedConfig();
+    gameConfig.teams.away.benchPlayers!.push({
+      id: "away-reliever",
+      name: "Reliever",
+      order: 5,
+    });
+    const events: GameEvent[] = [
+      out("a1", "away-1"),
+      out("a2", "away-2"),
+      out("a3", "away-3"),
+      run("starter-run", "home-1"),
+      out("h2", "home-2"),
+      out("h3", "home-3"),
+      out("h1", "home-1"),
+      substitution("ph", "away", "away-bench", "away-1", "pinchHitter"),
+      out("ph-out", "away-bench"),
+      out("a2-next", "away-2"),
+      out("a3-next", "away-3"),
+      substitution("pitcher", "away", "away-reliever", "away-bench", "pitcher"),
+      run("reliever-run", "home-2"),
+    ];
+
+    const result = replay(events, gameConfig);
+
+    expect(result.violations).toEqual([]);
+    expect(result.snapshot.activeLineup.away).toEqual([
+      "away-reliever",
+      "away-2",
+      "away-3",
+    ]);
+    expect(result.snapshot.activePitcherId.away).toBe("away-reliever");
+    expect(result.snapshot.fieldingPositions.away).toEqual({
+      "away-reliever": "pitcher",
+      "away-2": "short",
+      "away-3": "first",
+    });
+    expect(getPitcherStats(result.timeline, "away", "away-1")).toMatchObject([
+      { pitcherId: "away-1", outs: 3, runsAllowed: 1 },
+      { pitcherId: "away-reliever", outs: 0, runsAllowed: 1 },
+    ]);
+  });
+
+  it("finds the batting slot inherited by a pinch runner for the pitcher", () => {
+    const result = replay(
+      [
+        atBat(
+          "single",
+          "away-1",
+          [{ playerId: "away-1", from: "batter", to: "first", isRBI: false }],
+          "single"
+        ),
+        substitution("pr", "away", "away-bench", "away-1", "pinchRunner"),
+      ],
+      positionedConfig()
+    );
+
+    expect(
+      getPitcherReplacementPlayerId(result.snapshot, result.timeline, "away")
+    ).toBe("away-bench");
+    expect(result.snapshot.runners.first).toBe("away-bench");
+  });
+
+  it("keeps older pitching changes naming the retired pitcher replayable", () => {
+    const gameConfig = positionedConfig();
+    gameConfig.teams.away.benchPlayers!.push({
+      id: "away-reliever",
+      name: "Reliever",
+      order: 5,
+    });
+    const result = replay(
+      [
+        substitution("ph", "away", "away-bench", "away-1", "pinchHitter"),
+        substitution("legacy", "away", "away-reliever", "away-1", "pitcher"),
+      ],
+      gameConfig
+    );
+
+    expect(result.violations).toEqual([]);
+    expect(result.timeline.every((entry) => entry.applied)).toBe(true);
+    expect(result.snapshot.activePitcherId.away).toBe("away-reliever");
+    expect(result.snapshot.activeLineup.away).toEqual([
+      "away-bench",
+      "away-2",
+      "away-3",
+    ]);
+  });
+
+  it("follows the pitcher's slot through a pinch hitter and then a pinch runner", () => {
+    const gameConfig = positionedConfig();
+    gameConfig.teams.away.benchPlayers!.push({
+      id: "away-runner",
+      name: "Pinch runner",
+      order: 5,
+    });
+    const result = replay(
+      [
+        substitution("ph", "away", "away-bench", "away-1", "pinchHitter"),
+        atBat(
+          "hit",
+          "away-bench",
+          [
+            {
+              playerId: "away-bench",
+              from: "batter",
+              to: "first",
+              isRBI: false,
+            },
+          ],
+          "single"
+        ),
+        substitution("pr", "away", "away-runner", "away-bench", "pinchRunner"),
+      ],
+      gameConfig
+    );
+
+    expect(result.violations).toEqual([]);
+    expect(
+      getPitcherReplacementPlayerId(result.snapshot, result.timeline, "away")
+    ).toBe("away-runner");
   });
 
   it("makes a substitute who enters as pitcher the active pitcher", () => {

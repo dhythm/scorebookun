@@ -145,11 +145,11 @@ function getNewlyInvalidatedEventIds(
   state: AppGame,
   nextState: AppGame
 ): string[] {
-  const wasAppliedByEvent = new Map(
-    state.timeline.map((entry) => [entry.event, entry.applied])
+  const wasAppliedByEventId = new Map(
+    state.timeline.map((entry) => [entry.event.id, entry.applied])
   );
   return nextState.timeline.flatMap((entry) =>
-    wasAppliedByEvent.get(entry.event) === true && !entry.applied
+    wasAppliedByEventId.get(entry.event.id) === true && !entry.applied
       ? [entry.event.id]
       : []
   );

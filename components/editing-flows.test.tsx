@@ -224,6 +224,69 @@ describe("editing UI flows", () => {
 });
 
 describe("substitution UI", () => {
+  it("puts the next pitcher in the pinch hitter's batting slot through ordinary substitution controls", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    const positioned = structuredClone(config);
+    positioned.teams.away.players[0].position = "pitcher";
+    positioned.teams.away.startingPitcherId = "away-1";
+    positioned.teams.away.benchPlayers!.push({
+      id: "away-reliever",
+      name: "救援投手",
+      order: 11,
+    });
+    let game = gameReducer(null, {
+      type: "LOAD_GAME",
+      game: {
+        id: "game",
+        date: "2026-07-27T00:00:00.000Z",
+        status: "live",
+        config: positioned,
+        events: [],
+      },
+    })!;
+    const { rerender } = render(
+      <SubstitutionSheet game={game} onSubmit={onSubmit} />
+    );
+
+    await user.click(screen.getByRole("combobox", { name: "退く選手" }));
+    await user.click(screen.getByRole("option", { name: "先頭打者" }));
+    await user.click(screen.getByRole("combobox", { name: "入る選手" }));
+    await user.click(screen.getByRole("option", { name: "代打者" }));
+    await user.click(screen.getByRole("button", { name: "交代を記録" }));
+    game = gameReducer(game, {
+      type: "ADD_EVENT",
+      event: onSubmit.mock.calls[0][0],
+    })!;
+    rerender(<SubstitutionSheet game={game} onSubmit={onSubmit} />);
+
+    await user.click(screen.getByRole("button", { name: "守備位置変更" }));
+    expect(
+      screen.queryByRole("combobox", { name: "先頭打者の守備位置" })
+    ).toBeNull();
+    await user.click(screen.getByRole("button", { name: "投手交代" }));
+    await user.click(screen.getByRole("combobox", { name: "退く選手" }));
+    expect(screen.queryByRole("option", { name: "先頭打者" })).toBeNull();
+    await user.click(screen.getByRole("option", { name: "代打者" }));
+    await user.click(screen.getByRole("combobox", { name: "入る選手" }));
+    await user.click(screen.getByRole("option", { name: "救援投手" }));
+    await user.click(screen.getByRole("button", { name: "交代を記録" }));
+
+    game = gameReducer(game, {
+      type: "ADD_EVENT",
+      event: onSubmit.mock.calls[1][0],
+    })!;
+    expect(game.violations).toEqual([]);
+    expect(game.currentState.activeLineup.away).toEqual([
+      "away-reliever",
+      "away-2",
+    ]);
+    expect(game.currentState.activePitcherId.away).toBe("away-reliever");
+    expect(game.currentState.fieldingPositions.away).toEqual({
+      "away-reliever": "pitcher",
+    });
+  });
+
   it("keeps pinch hitters on offense and submits the selected players", async () => {
     const user = userEvent.setup();
     const onSubmit = vi.fn();

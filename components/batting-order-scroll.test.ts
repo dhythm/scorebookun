@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  getInningColumnScrollLeft,
-  shouldScrollCurrentBatterIntoView,
-} from "./batting-order-scroll";
+import { getInningColumnScrollLeft } from "./batting-order-scroll";
 
 describe("getInningColumnScrollLeft", () => {
   it("keeps an early inning at the start of the table", () => {
@@ -40,49 +37,5 @@ describe("getInningColumnScrollLeft", () => {
         maxScrollLeft: 420,
       })
     ).toBe(420);
-  });
-});
-
-describe("shouldScrollCurrentBatterIntoView", () => {
-  it("scrolls the active batting team's row when it is below the viewport", () => {
-    expect(
-      shouldScrollCurrentBatterIntoView({
-        isBattingTeam: true,
-        isRendered: true,
-        rowTop: 900,
-        rowBottom: 950,
-        viewportTop: 0,
-        viewportBottom: 800,
-      })
-    ).toBe(true);
-  });
-
-  it("does not move a row that is already fully visible", () => {
-    expect(
-      shouldScrollCurrentBatterIntoView({
-        isBattingTeam: true,
-        isRendered: true,
-        rowTop: 300,
-        rowBottom: 350,
-        viewportTop: 0,
-        viewportBottom: 800,
-      })
-    ).toBe(false);
-  });
-
-  it.each([
-    ["a hidden tab", true, false],
-    ["the fielding team", false, true],
-  ])("does not move %s", (_label, isBattingTeam, isRendered) => {
-    expect(
-      shouldScrollCurrentBatterIntoView({
-        isBattingTeam,
-        isRendered,
-        rowTop: 900,
-        rowBottom: 950,
-        viewportTop: 0,
-        viewportBottom: 800,
-      })
-    ).toBe(false);
   });
 });

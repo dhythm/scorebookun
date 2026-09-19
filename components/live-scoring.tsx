@@ -225,72 +225,23 @@ export function LiveScoring() {
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-primary-foreground/10 bg-primary px-3 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] text-primary-foreground shadow-sm sm:px-5 sm:pb-3">
+      <header className="app-header sticky top-0 z-40 flex items-center justify-between gap-1 bg-primary px-2 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-primary-foreground sm:px-5">
         <div className="flex min-w-0 items-center gap-1">
           <HomeLink />
-          <h1 className="flex items-center gap-2 text-base font-extrabold tracking-tight sm:text-lg">
-            {/* The 44px actions leave no room for the name on a phone. */}
-            <span className="sr-only min-[480px]:not-sr-only">
-              <AppName />
-            </span>
+          <h1 className="flex items-center">
+            <AppName />
           </h1>
         </div>
-        <div className="flex shrink-0 items-center gap-0.5">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-11 w-11 text-primary-foreground hover:bg-primary-foreground/10"
-            onClick={() => setGameNoteOpen(true)}
-            aria-label="試合メモを記録"
-          >
-            <MessageSquarePlus className="h-5 w-5" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="hidden h-11 w-11 text-primary-foreground hover:bg-primary-foreground/10 sm:inline-flex"
-            disabled={game.events.length === 0}
-            onClick={handleUndo}
-            aria-label="直前の記録を取り消す"
-          >
-            <RotateCcw className="h-5 w-5" />
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="h-11 w-11 text-primary-foreground hover:bg-primary-foreground/10"
-            onClick={() => setSubstitutionOpen(true)}
-            aria-label="選手交代"
-          >
-            <UserRoundCog className="h-5 w-5" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-11 w-11 text-primary-foreground hover:bg-primary-foreground/10 touch-manipulation"
-            onClick={() => setShowEndGameDialog(true)}
-            aria-label="試合終了"
-          >
-            <Flag className="h-5 w-5" />
-          </Button>
-          {/* Game actions come first; app-level tools follow. */}
-          <span
-            className="mx-1 h-5 w-px shrink-0 bg-primary-foreground/25"
-            aria-hidden="true"
-          />
+        <div className="flex shrink-0 items-center">
           <ShareGameButton />
           <DisplaySettingsDialog />
         </div>
       </header>
 
       <main className="w-full flex-1 px-3 pb-[calc(5.75rem+env(safe-area-inset-bottom))] pt-3 sm:px-4 sm:pb-6 sm:pt-5 lg:px-6">
-        <div className="mx-auto grid w-full max-w-7xl gap-4 lg:grid-cols-[minmax(22rem,28rem)_minmax(0,1fr)] lg:items-start lg:gap-5">
+        <div className="mx-auto grid w-full max-w-5xl gap-4 lg:grid-cols-[minmax(22rem,26rem)_minmax(0,1fr)] lg:items-start lg:gap-5">
           <section className="min-w-0 space-y-3 lg:sticky lg:top-[5.25rem]">
             <EventIntegrityAlert game={game} />
-            <EditHistoryControls />
             <Scoreboard game={game} collapsibleOnMobile />
             <GameSituation
               game={game}
@@ -298,14 +249,61 @@ export function LiveScoring() {
               onOpenBaseRunning={() => openBaseRunning()}
               onRunnerSelect={(runnerId) => openBaseRunning(runnerId)}
             />
+            <div
+              className="grid grid-cols-3 gap-1 rounded-xl border border-border bg-card p-1"
+              aria-label="試合の操作"
+            >
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-11 gap-1.5 px-1 text-xs"
+                onClick={() => setSubstitutionOpen(true)}
+                aria-label="選手交代"
+              >
+                <UserRoundCog className="h-4 w-4" />
+                選手交代
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-11 gap-1.5 px-1 text-xs"
+                onClick={() => setGameNoteOpen(true)}
+                aria-label="試合メモを記録"
+              >
+                <MessageSquarePlus className="h-4 w-4" />
+                メモ
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-11 gap-1.5 px-1 text-xs text-muted-foreground"
+                onClick={() => setShowEndGameDialog(true)}
+                aria-label="試合終了"
+              >
+                <Flag className="h-4 w-4" />
+                試合終了
+              </Button>
+            </div>
           </section>
-          <section className="min-w-0">
+          <section className="min-w-0 space-y-4">
             <BattingOrderPanel game={game} />
+            <section
+              className="rounded-2xl border border-border bg-card p-4"
+              aria-labelledby="edit-history-title"
+            >
+              <h2
+                id="edit-history-title"
+                className="mb-3 text-sm font-semibold"
+              >
+                記録の修正・復元
+              </h2>
+              <EditHistoryControls />
+            </section>
           </section>
         </div>
       </main>
 
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card px-3 pb-[max(0.625rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-10px_28px_rgba(20,50,28,0.14)] sm:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card px-3 pb-[max(0.625rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-4px_20px_rgba(23,63,53,0.06)] sm:hidden">
         <div className="mx-auto grid max-w-lg grid-cols-[0.8fr_1fr_1.45fr] gap-2">
           <Button
             type="button"

@@ -26,7 +26,6 @@ export function Scoreboard({
   const homeStats = getTeamStats(game.timeline, "home");
 
   const currentInning = game.currentState.inning;
-  const currentHalfLabel = game.currentState.half === "top" ? "表" : "裏";
   const headerHeight = collapsibleOnMobile ? "h-11 sm:h-9" : "h-9";
   const scoreHeight = collapsibleOnMobile ? "h-8 sm:h-9" : "h-9";
 
@@ -39,29 +38,58 @@ export function Scoreboard({
   }, [currentInning]);
 
   return (
-    <div className="isolate mx-auto w-full max-w-full overflow-hidden rounded-2xl border border-border bg-card shadow-[0_1px_2px_rgba(20,50,28,0.06)]">
+    <div className="isolate mx-auto w-full max-w-full overflow-hidden rounded-2xl border border-border bg-card shadow-none">
+      <div
+        role="group"
+        aria-label="現在のスコア"
+        className="score-summary px-4 pb-4 pt-5"
+      >
+        <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-3 text-center">
+          {(["away", "home"] as const).map((side, index) => (
+            <div
+              key={side}
+              className={cn(
+                "min-w-0",
+                index === 0
+                  ? "col-start-1 row-start-1"
+                  : "col-start-3 row-start-1"
+              )}
+            >
+              <p className="text-[11px] font-medium text-primary-foreground/75">
+                {side === "away" ? "先攻" : "後攻"}
+                {game.status !== "finished" &&
+                  (game.currentState.half === "top" ? "away" : "home") ===
+                    side &&
+                  "・攻撃中"}
+              </p>
+              <p className="my-1 font-mono text-4xl font-semibold leading-tight tabular-nums sm:text-5xl">
+                {side === "away" ? scores.awayTotal : scores.homeTotal}
+              </p>
+              <p className="break-all text-sm font-semibold leading-relaxed">
+                {game.config.teams[side].name ||
+                  (side === "away" ? "先攻" : "後攻")}
+              </p>
+            </div>
+          ))}
+          <span
+            className="col-start-2 row-start-1 mt-8 text-xl text-primary-foreground/50"
+            aria-hidden="true"
+          >
+            —
+          </span>
+        </div>
+      </div>
       {collapsibleOnMobile && !mobileExpanded && (
         <button
           type="button"
-          className="flex h-11 w-full items-center justify-between gap-3 px-3 text-sm touch-manipulation sm:hidden"
+          className="flex h-11 w-full items-center justify-center gap-2 px-3 text-xs font-medium text-muted-foreground touch-manipulation sm:hidden"
           aria-expanded={false}
           aria-label="スコアボードを展開"
           data-scoreboard-view="compact"
           onClick={() => setMobileExpanded(true)}
         >
-          <span className="min-w-0 flex-1 truncate text-right font-semibold">
-            {game.config.teams.away.name || "先攻"}
-          </span>
-          <span className="shrink-0 font-mono text-base font-extrabold tabular-nums text-primary">
-            {scores.awayTotal} - {scores.homeTotal}
-          </span>
-          <span className="min-w-0 flex-1 truncate font-semibold">
-            {game.config.teams.home.name || "後攻"}
-          </span>
-          <span className="shrink-0 text-xs font-bold text-muted-foreground">
-            {currentInning}回{currentHalfLabel}
-          </span>
-          <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+          イニングスコア
+          <ChevronDown className="h-3.5 w-3.5" />
         </button>
       )}
 

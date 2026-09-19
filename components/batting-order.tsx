@@ -12,10 +12,7 @@ import { AtBatResultDialog } from "@/components/at-bat-result-dialog";
 import { BaseRunningEditDialog } from "@/components/base-running-edit-dialog";
 import { ScorebookAtBatLine } from "@/components/scorebook-at-bat-line";
 import { getPlayerInningEntries } from "@/lib/app-state/timeline-selectors";
-import {
-  getInningColumnScrollLeft,
-  shouldScrollCurrentBatterIntoView,
-} from "@/components/batting-order-scroll";
+import { getInningColumnScrollLeft } from "@/components/batting-order-scroll";
 
 interface BattingOrderPanelProps {
   game: AppGame;
@@ -27,13 +24,11 @@ function OrderList({
   game,
   teamSide,
   isBattingTeam,
-  isSelectedView,
   onEditAtBat,
 }: {
   game: AppGame;
   teamSide: TeamSide;
   isBattingTeam: boolean;
-  isSelectedView: boolean;
   onEditAtBat: (eventId: string) => void;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -67,36 +62,6 @@ function OrderList({
   const inningCount = getEffectiveInningCount(game);
   const currentInning = game.currentState.inning;
   const halfForTeam = teamSide === "away" ? "top" : "bottom";
-
-  useEffect(() => {
-    const container = scrollRef.current;
-    const currentBatterRow = container?.querySelector<HTMLElement>(
-      "[data-current-batter='true']"
-    );
-    if (!container || !currentBatterRow) return;
-
-    const rowRect = currentBatterRow.getBoundingClientRect();
-    if (
-      !shouldScrollCurrentBatterIntoView({
-        isBattingTeam,
-        isRendered:
-          isSelectedView && currentBatterRow.getClientRects().length > 0,
-        rowTop: rowRect.top,
-        rowBottom: rowRect.bottom,
-        viewportTop: 0,
-        viewportBottom: window.innerHeight,
-      })
-    ) {
-      return;
-    }
-
-    const previousScrollLeft = container.scrollLeft;
-    currentBatterRow.scrollIntoView({
-      block: "center",
-      inline: "nearest",
-    });
-    container.scrollLeft = previousScrollLeft;
-  }, [currentPlayerId, isBattingTeam, isSelectedView]);
 
   useEffect(() => {
     const container = scrollRef.current;
@@ -339,7 +304,6 @@ export function BattingOrderPanel({ game }: BattingOrderPanelProps) {
               game={game}
               teamSide="away"
               isBattingTeam={battingTeamSide === "away"}
-              isSelectedView
               onEditAtBat={setEditingEventId}
             />
           </div>
@@ -358,7 +322,6 @@ export function BattingOrderPanel({ game }: BattingOrderPanelProps) {
               game={game}
               teamSide="home"
               isBattingTeam={battingTeamSide === "home"}
-              isSelectedView
               onEditAtBat={setEditingEventId}
             />
           </div>
@@ -389,7 +352,6 @@ export function BattingOrderPanel({ game }: BattingOrderPanelProps) {
                 game={game}
                 teamSide="away"
                 isBattingTeam={battingTeamSide === "away"}
-                isSelectedView={activeTab === "away"}
                 onEditAtBat={setEditingEventId}
               />
             </TabsContent>
@@ -398,7 +360,6 @@ export function BattingOrderPanel({ game }: BattingOrderPanelProps) {
                 game={game}
                 teamSide="home"
                 isBattingTeam={battingTeamSide === "home"}
-                isSelectedView={activeTab === "home"}
                 onEditAtBat={setEditingEventId}
               />
             </TabsContent>

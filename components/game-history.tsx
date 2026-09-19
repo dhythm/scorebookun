@@ -102,8 +102,8 @@ export function GameHistory() {
 
   return (
     <>
-      <Card className="gap-0 border-border py-0">
-        <CardHeader className="px-2 py-2">
+      <Card className="gap-0 overflow-hidden border-border py-0">
+        <CardHeader className="px-3 py-2">
           <CardTitle>
             <Button
               type="button"
@@ -116,7 +116,7 @@ export function GameHistory() {
               <span className="flex min-w-0 items-center gap-2">
                 <History className="h-4 w-4 shrink-0" />
                 <span>試合履歴</span>
-                <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                <span className="rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium tabular-nums text-primary">
                   {games.length}
                 </span>
               </span>
@@ -131,8 +131,73 @@ export function GameHistory() {
         {isExpanded && (
           <CardContent
             id="saved-game-list"
-            className="space-y-2 border-t border-border px-4 py-4"
+            className="space-y-3 border-t border-border px-4 py-4"
           >
+            {games.length === 0 && (
+              <p className="py-6 text-center text-sm text-muted-foreground">
+                保存された試合はありません
+              </p>
+            )}
+            {games.map((storedGame) => {
+              const snapshot = replay(
+                storedGame.events,
+                storedGame.config
+              ).snapshot;
+              return (
+                <div
+                  key={storedGame.id}
+                  className="flex items-center gap-1 rounded-xl bg-muted/60 pl-3 pr-1"
+                >
+                  <button
+                    type="button"
+                    className="min-h-11 min-w-0 flex-1 touch-manipulation rounded-lg py-3 text-left outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                    aria-label={`${storedGame.config.teams.away.name} ${snapshot.score.away} - ${snapshot.score.home} ${storedGame.config.teams.home.name}、${storedGame.date.slice(0, 10)}、${storedGame.status === "finished" ? "試合終了" : "試合中"}`}
+                    onClick={() => router.push(gamePath(storedGame.id))}
+                  >
+                    <span className="mb-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                      <span className="tabular-nums">
+                        {storedGame.date.slice(0, 10).replaceAll("-", "/")}
+                      </span>
+                      <span
+                        className={
+                          storedGame.status === "finished"
+                            ? "rounded bg-card px-1.5 py-0.5"
+                            : "rounded bg-primary/10 px-1.5 py-0.5 font-medium text-primary"
+                        }
+                      >
+                        {storedGame.status === "finished"
+                          ? "試合終了"
+                          : "試合中"}
+                      </span>
+                    </span>
+                    <span className="grid grid-cols-[minmax(0,1fr)_2rem] items-center gap-x-2 gap-y-1 text-sm">
+                      <span className="truncate font-medium">
+                        {storedGame.config.teams.away.name}
+                      </span>
+                      <span className="text-right text-lg font-bold leading-tight tabular-nums">
+                        {snapshot.score.away}
+                      </span>
+                      <span className="truncate font-medium">
+                        {storedGame.config.teams.home.name}
+                      </span>
+                      <span className="text-right text-lg font-bold leading-tight tabular-nums">
+                        {snapshot.score.home}
+                      </span>
+                    </span>
+                  </button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-11 w-11 shrink-0 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    aria-label={`${storedGame.config.teams.away.name}対${storedGame.config.teams.home.name}の試合を履歴から削除`}
+                    onClick={() => setDeleteGameId(storedGame.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              );
+            })}
             <div className="grid grid-cols-2 gap-2">
               <label className="flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium hover:bg-secondary has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50">
                 <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
@@ -161,49 +226,6 @@ export function GameHistory() {
                 エクスポート
               </Button>
             </div>
-            {games.length === 0 && (
-              <p className="py-2 text-center text-sm text-muted-foreground">
-                保存された試合はありません
-              </p>
-            )}
-            {games.map((storedGame) => {
-              const snapshot = replay(
-                storedGame.events,
-                storedGame.config
-              ).snapshot;
-              return (
-                <div
-                  key={storedGame.id}
-                  className="flex items-center gap-2 rounded-lg border border-border bg-card p-2"
-                >
-                  <button
-                    type="button"
-                    className="min-h-11 min-w-0 flex-1 touch-manipulation text-left"
-                    onClick={() => router.push(gamePath(storedGame.id))}
-                  >
-                    <span className="block truncate text-sm font-semibold">
-                      {storedGame.config.teams.away.name} {snapshot.score.away}
-                      <span className="mx-1 text-muted-foreground">-</span>
-                      {snapshot.score.home} {storedGame.config.teams.home.name}
-                    </span>
-                    <span className="block text-xs text-muted-foreground">
-                      {storedGame.date.slice(0, 10)}・
-                      {storedGame.status === "finished" ? "試合終了" : "試合中"}
-                    </span>
-                  </button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-11 w-11 shrink-0 text-destructive"
-                    aria-label={`${storedGame.config.teams.away.name}対${storedGame.config.teams.home.name}の試合を履歴から削除`}
-                    onClick={() => setDeleteGameId(storedGame.id)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              );
-            })}
           </CardContent>
         )}
       </Card>

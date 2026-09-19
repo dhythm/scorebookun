@@ -22,8 +22,8 @@ export function DiamondField({
   const thirdRunner = runners.third ? getPlayerById(game, runners.third) : null;
 
   return (
-    <div className="relative w-full max-w-[200px] mx-auto">
-      <svg viewBox="0 0 100 100" className="w-full h-auto">
+    <div className="field-surface relative mx-auto w-full max-w-[200px] rounded-2xl border border-border">
+      <svg viewBox="0 0 100 100" className="w-full h-auto" aria-hidden="true">
         <line
           x1="50"
           y1="15"
@@ -102,31 +102,31 @@ export function DiamondField({
         {secondRunner && (
           <button
             type="button"
-            className="absolute left-1/2 top-[-5%] flex min-h-11 min-w-11 -translate-x-1/2 touch-manipulation items-center justify-center rounded-lg bg-accent px-2 text-[10px] font-bold text-accent-foreground shadow-sm"
+            className="absolute left-1/2 top-0 flex min-h-11 min-w-11 -translate-x-1/2 touch-manipulation items-center justify-center max-w-[48%] rounded-lg bg-accent px-1 text-[11px] font-bold text-accent-foreground shadow-sm"
             onClick={() => onRunnerSelect?.(secondRunner.id)}
             aria-label={`2塁走者 ${secondRunner.name} の走塁を入力`}
           >
-            {secondRunner.name}
+            <span className="truncate">{secondRunner.name}</span>
           </button>
         )}
         {firstRunner && (
           <button
             type="button"
-            className="absolute right-[-8%] top-[35%] flex min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-lg bg-accent px-2 text-[10px] font-bold text-accent-foreground shadow-sm"
+            className="absolute right-0 top-[35%] flex min-h-11 min-w-11 touch-manipulation items-center justify-center max-w-[48%] rounded-lg bg-accent px-1 text-[11px] font-bold text-accent-foreground shadow-sm"
             onClick={() => onRunnerSelect?.(firstRunner.id)}
             aria-label={`1塁走者 ${firstRunner.name} の走塁を入力`}
           >
-            {firstRunner.name}
+            <span className="truncate">{firstRunner.name}</span>
           </button>
         )}
         {thirdRunner && (
           <button
             type="button"
-            className="absolute left-[-8%] top-[35%] flex min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-lg bg-accent px-2 text-[10px] font-bold text-accent-foreground shadow-sm"
+            className="absolute left-0 top-[35%] flex min-h-11 min-w-11 touch-manipulation items-center justify-center max-w-[48%] rounded-lg bg-accent px-1 text-[11px] font-bold text-accent-foreground shadow-sm"
             onClick={() => onRunnerSelect?.(thirdRunner.id)}
             aria-label={`3塁走者 ${thirdRunner.name} の走塁を入力`}
           >
-            {thirdRunner.name}
+            <span className="truncate">{thirdRunner.name}</span>
           </button>
         )}
       </div>

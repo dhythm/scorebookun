@@ -12,7 +12,11 @@ import type {
   TimelineEntry,
   Violation,
 } from "./types";
-import { evaluateMovementOutcome } from "./runner-advance";
+import {
+  evaluateMovementOutcome,
+  limitWalkOffScoringMovements,
+} from "./runner-advance";
+import { normalizeSacrificeFlyResult } from "./rules";
 
 const EMPTY_RUNNERS = {
   first: null,
@@ -145,7 +149,8 @@ function validateEvent(
   eventIndex: number,
   snapshot: Snapshot,
   config: GameConfig,
-  allPlayerIds: ReadonlySet<string>
+  allPlayerIds: ReadonlySet<string>,
+  timeline: readonly TimelineEntry[]
 ): Violation[] {
   const violations: Violation[] = [];
   const team = offense(snapshot);
@@ -214,7 +219,7 @@ function validateEvent(
   if (event.kind === "substitution") {
     return [
       ...violations,
-      ...validateSubstitution(event, eventIndex, snapshot, config),
+      ...validateSubstitution(event, eventIndex, snapshot, config, timeline),
     ];
   }
   if (event.kind === "note") {
@@ -416,11 +421,38 @@ function validateEvent(
   return violations;
 }
 
+/** The player inheriting a departed pitcher's batting slot, or the DH pitcher. */
+export function getPitcherReplacementPlayerId(
+  snapshot: Snapshot,
+  timeline: readonly TimelineEntry[],
+  team: TeamSide
+): string | null {
+  const pitcherId = snapshot.activePitcherId[team];
+  if (pitcherId === null || snapshot.activeLineup[team].includes(pitcherId)) {
+    return pitcherId;
+  }
+  let replacementId = pitcherId;
+  for (const { event, applied } of timeline) {
+    if (
+      applied &&
+      event.kind === "substitution" &&
+      event.team === team &&
+      event.outPlayerId === replacementId
+    ) {
+      replacementId = event.inPlayerId;
+    }
+  }
+  return snapshot.activeLineup[team].includes(replacementId)
+    ? replacementId
+    : pitcherId;
+}
+
 function validateSubstitution(
   event: SubstitutionEvent,
   eventIndex: number,
   snapshot: Snapshot,
-  config: GameConfig
+  config: GameConfig,
+  timeline: readonly TimelineEntry[]
 ): Violation[] {
   const violations: Violation[] = [];
   const rosterIds = new Set(
@@ -445,7 +477,9 @@ function validateSubstitution(
   }
   const outgoingPlayerIsActive =
     event.role === "pitcher" && activePitcherId !== null
-      ? event.outPlayerId === activePitcherId
+      ? event.outPlayerId === activePitcherId ||
+        event.outPlayerId ===
+          getPitcherReplacementPlayerId(snapshot, timeline, event.team)
       : activeLineup.includes(event.outPlayerId);
   if (!outgoingPlayerIsActive) {
     violations.push(
@@ -719,7 +753,7 @@ export function replay(
       );
     } else {
       eventViolations.push(
-        ...validateEvent(event, index, snapshot, config, allPlayerIds)
+        ...validateEvent(event, index, snapshot, config, allPlayerIds, timeline)
       );
     }
     violations.push(...eventViolations);
@@ -850,12 +884,19 @@ export function replay(
       if (movement.from !== "batter") nextRunners[movement.from] = null;
     }
 
-    const { outsRecorded, scoringMovements } = evaluateMovementOutcome({
+    const outcome = evaluateMovementOutcome({
       currentOuts: snapshot.outs,
       movements: event.movements,
       ...(event.kind === "atBat"
         ? { batterId: event.batterId, result: event.result }
         : {}),
+    });
+    const { outsRecorded } = outcome;
+    const scoringMovements = limitWalkOffScoringMovements({
+      scoringMovements: outcome.scoringMovements,
+      result: event.kind === "atBat" ? event.result : undefined,
+      snapshot,
+      regulationInnings: config.regulationInnings,
     });
 
     for (const movement of event.movements) {
@@ -890,8 +931,17 @@ export function replay(
 
     finishIfNeeded(snapshot, config, completedHalf);
     const after = copySnapshot(snapshot);
+    let timelineEvent = event;
+    if (event.kind === "atBat") {
+      const result = normalizeSacrificeFlyResult(
+        event,
+        before.outs,
+        scoringMovements
+      );
+      if (result !== event.result) timelineEvent = { ...event, result };
+    }
     timeline.push({
-      event,
+      event: timelineEvent,
       index,
       inning: before.inning,
       half: before.half,

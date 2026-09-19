@@ -27,6 +27,7 @@ import { getPitcherStats } from "@/lib/domain/pitching";
 import { GameHistory } from "@/components/game-history";
 import { ShareGameButton } from "@/components/share-game-button";
 import { HomeLink } from "@/components/home-link";
+import { AppName } from "@/components/app-name";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,8 +71,8 @@ function InningDetails({ game }: { game: AppGame }) {
   );
 
   return (
-    <Card className="border-border">
-      <CardHeader className="pb-2">
+    <Card className="gap-2 overflow-hidden border-border py-4">
+      <CardHeader className="px-4 pb-0">
         <CardTitle className="text-base font-semibold text-foreground">
           イニング詳細
         </CardTitle>
@@ -86,7 +87,7 @@ function InningDetails({ game }: { game: AppGame }) {
 
             return (
               <AccordionItem key={key} value={key}>
-                <AccordionTrigger className="px-4 text-sm">
+                <AccordionTrigger className="min-h-12 px-4 text-sm hover:no-underline">
                   {inning}回{half === "top" ? "表" : "裏"} ({teamName})
                   {leftOnBaseByHalf.has(key)
                     ? `・残塁${leftOnBaseByHalf.get(key)}`
@@ -101,9 +102,9 @@ function InningDetails({ game }: { game: AppGame }) {
                         return (
                           <div
                             key={event.id}
-                            className="flex items-center gap-2 text-sm"
+                            className="flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-lg bg-muted/50 px-3 py-2.5 text-sm"
                           >
-                            <span className="text-muted-foreground w-6">
+                            <span className="w-5 shrink-0 text-xs tabular-nums text-muted-foreground">
                               #{index + 1}
                             </span>
                             <span className="font-medium">
@@ -117,7 +118,7 @@ function InningDetails({ game }: { game: AppGame }) {
                               </span>
                             )}
                             {entry.runsScored > 0 && (
-                              <span className="text-primary font-semibold">
+                              <span className="ml-auto rounded bg-primary/10 px-1.5 py-0.5 text-xs font-semibold text-primary">
                                 +{entry.runsScored}点
                               </span>
                             )}
@@ -129,12 +130,12 @@ function InningDetails({ game }: { game: AppGame }) {
                         return (
                           <div
                             key={event.id}
-                            className="flex items-center gap-2 text-sm text-muted-foreground"
+                            className="flex flex-wrap items-baseline gap-x-2 gap-y-1 px-3 py-2 text-sm text-muted-foreground"
                           >
                             <span className="w-6">#{index + 1}</span>
                             <span>{formatEventNotation(event)}</span>
                             {entry.runsScored > 0 && (
-                              <span className="text-primary font-semibold">
+                              <span className="ml-auto rounded bg-primary/10 px-1.5 py-0.5 text-xs font-semibold text-primary">
                                 +{entry.runsScored}点
                               </span>
                             )}
@@ -145,7 +146,7 @@ function InningDetails({ game }: { game: AppGame }) {
                       return (
                         <div
                           key={event.id}
-                          className="flex items-center gap-2 text-sm text-muted-foreground"
+                          className="flex flex-wrap items-baseline gap-x-2 gap-y-1 px-3 py-2 text-sm text-muted-foreground"
                         >
                           <span className="w-6">#{index + 1}</span>
                           <span>{formatEventNotation(event)}</span>
@@ -169,7 +170,7 @@ function TeamSummary({ game }: { game: AppGame }) {
       <CardHeader className="px-4 py-0">
         <CardTitle className="text-base">チーム集計</CardTitle>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 gap-2 px-4 sm:grid-cols-2">
+      <CardContent className="grid grid-cols-1 gap-3 px-4 sm:grid-cols-2">
         {(["away", "home"] as const).map((side) => {
           const summary = getTeamSummary(game.timeline, side);
           const errorDetail =
@@ -183,20 +184,20 @@ function TeamSummary({ game }: { game: AppGame }) {
                   )
                   .join("、");
           return (
-            <div key={side} className="rounded-lg border border-border p-3">
+            <div key={side} className="rounded-xl bg-muted/60 p-3">
               <p className="truncate text-sm font-semibold">
                 {game.config.teams[side].name}
               </p>
-              <dl className="mt-2 grid grid-cols-2 gap-2 text-sm">
+              <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
                 <div>
                   <dt className="text-xs text-muted-foreground">盗塁</dt>
-                  <dd className="font-mono font-semibold">
+                  <dd className="mt-0.5 text-xl font-bold tabular-nums">
                     {summary.stolenBases}
                   </dd>
                 </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">残塁</dt>
-                  <dd className="font-mono font-semibold">
+                  <dd className="mt-0.5 text-xl font-bold tabular-nums">
                     {summary.leftOnBase}
                   </dd>
                 </div>
@@ -218,7 +219,7 @@ function PitchingSummary({ game }: { game: AppGame }) {
       <CardHeader className="px-4 py-0">
         <CardTitle className="text-base">投手成績</CardTitle>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 gap-2 px-4 sm:grid-cols-2">
+      <CardContent className="grid grid-cols-1 gap-3 px-4 sm:grid-cols-2">
         {(["away", "home"] as const).map((side) => {
           const team = game.config.teams[side];
           const roster = [...team.players, ...(team.benchPlayers ?? [])];
@@ -228,10 +229,7 @@ function PitchingSummary({ game }: { game: AppGame }) {
             team.startingPitcherId ?? null
           );
           return (
-            <div
-              key={side}
-              className="space-y-2 rounded-lg border border-border p-3"
-            >
+            <div key={side} className="space-y-3 rounded-xl bg-muted/60 p-3">
               <p className="truncate text-sm font-semibold">{team.name}</p>
               {pitchingLines.map((stats, index) => {
                 const pitcherName =
@@ -242,19 +240,32 @@ function PitchingSummary({ game }: { game: AppGame }) {
                 return (
                   <div
                     key={`${stats.pitcherId ?? "starter"}-${index}`}
-                    className="rounded-md bg-muted/50 px-2.5 py-2"
+                    className="rounded-lg bg-card p-3"
                   >
-                    <p className="truncate text-xs font-semibold">
+                    <p className="truncate text-sm font-semibold">
                       {pitcherName}
-                      <span className="ml-1 font-normal text-muted-foreground">
+                      <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs font-normal text-muted-foreground">
                         {stats.role === "starter" ? "先発" : "救援"}
                       </span>
                     </p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {stats.inningsPitched}回・被安打{stats.hitsAllowed}・失点
-                      {stats.runsAllowed}・与四球{stats.walksAllowed}・奪三振
-                      {stats.strikeouts}
-                    </p>
+                    <dl className="mt-3 grid grid-cols-5 gap-1 text-center">
+                      {[
+                        { label: "投球回", value: stats.inningsPitched },
+                        { label: "被安打", value: stats.hitsAllowed },
+                        { label: "失点", value: stats.runsAllowed },
+                        { label: "与四球", value: stats.walksAllowed },
+                        { label: "奪三振", value: stats.strikeouts },
+                      ].map(({ label, value }) => (
+                        <div key={label}>
+                          <dt className="text-[11px] text-muted-foreground">
+                            {label}
+                          </dt>
+                          <dd className="mt-1 text-base font-semibold tabular-nums">
+                            {value}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
                   </div>
                 );
               })}
@@ -309,10 +320,12 @@ export function GameResult() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-primary-foreground/10 bg-primary px-4 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] text-primary-foreground shadow-sm print:hidden">
+      <header className="app-header sticky top-0 z-40 flex items-center justify-between border-b border-primary-foreground/10 bg-primary px-4 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] text-primary-foreground print:hidden">
         <div className="flex min-w-0 items-center gap-1">
           <HomeLink />
-          <h1 className="text-lg font-extrabold">試合終了</h1>
+          <div className="text-base font-bold">
+            <AppName />
+          </div>
         </div>
         <div className="flex items-center gap-0.5">
           <ShareGameButton />
@@ -320,7 +333,16 @@ export function GameResult() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-5xl space-y-4 px-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 sm:px-4 lg:px-6 print:hidden">
+      <main className="mx-auto w-full max-w-3xl space-y-4 px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-4 sm:px-4 lg:px-6 print:hidden">
+        <div className="flex items-end justify-between gap-3 px-1 pb-1 pt-2">
+          <h1 className="text-2xl font-bold tracking-tight">試合終了</h1>
+          <time
+            dateTime={game.date}
+            className="pb-0.5 text-sm tabular-nums text-muted-foreground"
+          >
+            {game.date.slice(0, 10).replaceAll("-", "/")}
+          </time>
+        </div>
         <EventIntegrityAlert game={game} />
         <Scoreboard game={game} />
         {game.currentState.gameEndReasonDetail && (
@@ -328,8 +350,6 @@ export function GameResult() {
             終了理由: {game.currentState.gameEndReasonDetail}
           </p>
         )}
-        <PitchingSummary game={game} />
-        <TeamSummary game={game} />
         <Card className="border-border py-4 gap-2">
           <CardHeader className="px-4 pb-0 pt-0 sm:px-6">
             <CardTitle className="text-base">打撃成績</CardTitle>
@@ -339,13 +359,13 @@ export function GameResult() {
               <TabsList className="grid h-11 w-full grid-cols-2 p-1 touch-manipulation">
                 <TabsTrigger
                   value="away"
-                  className="truncate text-sm data-[state=active]:font-semibold"
+                  className="min-w-0 truncate text-sm data-[state=active]:bg-primary data-[state=active]:font-semibold data-[state=active]:text-primary-foreground"
                 >
                   {game.teams.away.name || "先攻"}
                 </TabsTrigger>
                 <TabsTrigger
                   value="home"
-                  className="truncate text-sm data-[state=active]:font-semibold"
+                  className="min-w-0 truncate text-sm data-[state=active]:bg-primary data-[state=active]:font-semibold data-[state=active]:text-primary-foreground"
                 >
                   {game.teams.home.name || "後攻"}
                 </TabsTrigger>
@@ -359,8 +379,9 @@ export function GameResult() {
             </Tabs>
           </CardContent>
         </Card>
+        <PitchingSummary game={game} />
+        <TeamSummary game={game} />
         <InningDetails game={game} />
-        <GameHistory />
         <section className="rounded-2xl border border-border bg-card p-3 shadow-sm sm:p-4">
           <h2 className="mb-3 text-sm font-bold text-foreground">試合データ</h2>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -390,6 +411,7 @@ export function GameResult() {
             </Button>
           </div>
         </section>
+        <GameHistory />
       </main>
       <PrintableScorebook game={game} />
 

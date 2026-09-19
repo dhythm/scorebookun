@@ -21,7 +21,7 @@ function OutIndicator({ outs }: { outs: number }) {
           key={i}
           className={`h-3 w-3 rounded-full border-2 ${
             i < outs
-              ? "border-accent bg-accent"
+              ? "border-primary bg-primary"
               : "border-muted-foreground/30 bg-card"
           }`}
         />
@@ -44,10 +44,10 @@ export function GameSituation({
   const batterIndex = game.currentState.currentBatterIndex[teamSide];
 
   return (
-    <Card className="gap-0 overflow-hidden rounded-2xl border-border py-0 shadow-[0_8px_24px_rgba(20,50,28,0.07)]">
+    <Card className="gap-0 overflow-hidden rounded-2xl border-border py-0 shadow-none">
       <CardContent className="p-0">
-        <div className="flex items-center justify-between border-b border-border bg-secondary/60 px-4 py-3">
-          <div className="flex items-center gap-2.5">
+        <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
+          <div className="flex shrink-0 items-center gap-2">
             <span className="text-base font-extrabold text-foreground">
               {inning}回{half === "top" ? "表" : "裏"}
             </span>
@@ -56,12 +56,12 @@ export function GameSituation({
               {outs}アウト
             </span>
           </div>
-          <span className="rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
-            {game.config.teams[teamSide].name} 攻撃
+          <span className="ml-2 min-w-0 truncate rounded-md bg-secondary px-2 py-1 text-[11px] font-medium text-primary">
+            {game.config.teams[teamSide].name}
           </span>
         </div>
 
-        <div className="grid grid-cols-[7.25rem_minmax(0,1fr)] items-center gap-4 px-4 py-4 sm:grid-cols-[8.5rem_minmax(0,1fr)] sm:px-5">
+        <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] items-center gap-4 px-4 py-4 sm:grid-cols-[9rem_minmax(0,1fr)] sm:px-5">
           <div className="min-w-0">
             <DiamondField
               runners={runners}
@@ -73,14 +73,14 @@ export function GameSituation({
           <div className="min-w-0">
             {currentBatter && (
               <div className="mb-4">
-                <div className="mb-1 text-[10px] font-bold tracking-[0.16em] text-muted-foreground">
-                  CURRENT BATTER
+                <div className="mb-1 text-[10px] font-bold tracking-wide text-muted-foreground">
+                  この打席
                 </div>
                 <div className="flex min-w-0 items-center gap-2">
                   <span className="shrink-0 rounded-md bg-primary px-2 py-1 font-mono text-xs font-bold text-primary-foreground">
                     #{batterIndex + 1}
                   </span>
-                  <span className="truncate text-xl font-extrabold tracking-tight text-foreground">
+                  <span className="break-all text-xl font-extrabold tracking-tight text-foreground">
                     {currentBatter.name}
                   </span>
                 </div>
@@ -89,8 +89,8 @@ export function GameSituation({
 
             {nextBatter && (
               <div className="border-t border-border pt-3">
-                <div className="mb-1 text-[10px] font-bold tracking-[0.12em] text-muted-foreground">
-                  NEXT
+                <div className="mb-1 text-[10px] font-bold tracking-wide text-muted-foreground">
+                  次の打者
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="rounded bg-secondary px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
@@ -98,7 +98,7 @@ export function GameSituation({
                     {((batterIndex + 1) % game.teams[teamSide].players.length) +
                       1}
                   </span>
-                  <span className="truncate text-sm font-semibold text-muted-foreground">
+                  <span className="break-all text-sm font-semibold text-muted-foreground">
                     {nextBatter.name}
                   </span>
                 </div>

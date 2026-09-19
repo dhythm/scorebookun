@@ -24,6 +24,7 @@ import {
   FIELDING_POSITIONS,
 } from "@/lib/domain/catalog";
 import { generateId } from "@/lib/game-utils";
+import { getPitcherReplacementPlayerId } from "@/lib/domain/replay";
 import {
   createPositionChangeEvent,
   createSubstitutionEvent,
@@ -86,6 +87,11 @@ export function SubstitutionSheet({
   );
   const activeIds = game.currentState.activeLineup[team];
   const activePitcherId = game.currentState.activePitcherId[team];
+  const pitcherReplacementPlayerId = getPitcherReplacementPlayerId(
+    game.currentState,
+    game.timeline,
+    team
+  );
   const currentPositions = game.currentState.fieldingPositions[team];
   const runnerIds = Object.values(game.currentState.runners).filter(
     (playerId): playerId is string => playerId !== null
@@ -93,7 +99,7 @@ export function SubstitutionSheet({
   const outCandidates = roster.filter((player) => {
     if (mode === "pinchRunner") return runnerIds.includes(player.id);
     if (mode === "pitcher" && activePitcherId) {
-      return player.id === activePitcherId;
+      return player.id === pitcherReplacementPlayerId;
     }
     return activeIds.includes(player.id);
   });
@@ -102,7 +108,10 @@ export function SubstitutionSheet({
   );
   // A pitcher outside the batting order (DH game) still fields a position.
   const playersInGame = roster.filter(
-    (player) => activeIds.includes(player.id) || player.id === activePitcherId
+    (player) =>
+      activeIds.includes(player.id) ||
+      (player.id === activePitcherId &&
+        pitcherReplacementPlayerId === activePitcherId)
   );
   const positionChanges = playersInGame.flatMap((player) => {
     const position = positionDraft[player.id];

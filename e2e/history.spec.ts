@@ -11,7 +11,9 @@ test("a game can be left, exported from the history, and imported elsewhere", as
   await expect(page.getByRole("heading", { name: "試合を作成" })).toBeVisible();
 
   await page.getByRole("button", { name: /試合履歴/ }).click();
-  await expect(page.getByText(/荒川サンダース 6\s*-\s*10/)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /荒川サンダース 6\s*-\s*10/ })
+  ).toBeVisible();
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "試合履歴をエクスポート" }).click();
   const download = await downloadPromise;
@@ -35,7 +37,9 @@ test("a game can be left, exported from the history, and imported elsewhere", as
     .setInputFiles(exportedPath);
 
   await expect(otherPage.getByText("1試合をインポートしました")).toBeVisible();
-  await expect(otherPage.getByText(/荒川サンダース 6\s*-\s*10/)).toBeVisible();
+  await expect(
+    otherPage.getByRole("button", { name: /荒川サンダース 6\s*-\s*10/ })
+  ).toBeVisible();
   await otherDevice.close();
 });
 

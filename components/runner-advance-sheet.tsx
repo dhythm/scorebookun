@@ -25,6 +25,7 @@ import { RESULT_LABELS } from "@/lib/domain/catalog";
 import {
   evaluateMovementOutcome,
   initializeRbiByPlayerId,
+  limitWalkOffScoringMovements,
 } from "@/lib/domain/runner-advance";
 import { SituationMiniHeader } from "@/components/situation-mini-header";
 import { getSafeRunnerDestinations } from "@/lib/app-state/runner-options";
@@ -265,11 +266,17 @@ export function RunnerAdvanceSheet({
       batterId: currentBatter?.id,
       result,
     });
+    const scoringMovements = limitWalkOffScoringMovements({
+      scoringMovements: outcome.scoringMovements,
+      result,
+      snapshot,
+      regulationInnings: game.config.regulationInnings,
+    });
     const scorerIds = new Set(
-      outcome.scoringMovements.map((movement) => movement.playerId)
+      scoringMovements.map((movement) => movement.playerId)
     );
     return {
-      runsScored: outcome.scoringMovements.length,
+      runsScored: scoringMovements.length,
       outsAdded: outcome.outsRecorded,
       totalOuts: Math.min(outs + outcome.outsRecorded, 3),
       scorers: runnerStates

@@ -3,8 +3,6 @@ import { expect, test, type Browser, type Page } from "@playwright/test";
 async function createGame(page: Page): Promise<string> {
   await page.goto("/");
   await page.getByRole("button", { name: /チーム1・チーム2/ }).click();
-  // The confirmation toast sits on top of the fixed footer button.
-  await page.getByRole("button", { name: "Close toast" }).click();
   await page.getByRole("button", { name: "試合を作成して開始" }).click();
   await page.waitForURL(/\/games\/[A-Za-z0-9_-]{22}$/);
   return page.url();

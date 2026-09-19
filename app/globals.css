@@ -4,39 +4,39 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(0.98 0.005 145);
-  --foreground: oklch(0.2 0.02 145);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.2 0.02 145);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.2 0.02 145);
-  --primary: oklch(0.45 0.12 145);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.95 0.01 145);
-  --secondary-foreground: oklch(0.3 0.05 145);
-  --muted: oklch(0.95 0.01 145);
-  --muted-foreground: oklch(0.45 0.02 145);
-  --accent: oklch(0.75 0.15 85);
-  --accent-foreground: oklch(0.25 0.05 85);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.88 0.02 145);
-  --input: oklch(0.92 0.01 145);
-  --ring: oklch(0.45 0.12 145);
-  --chart-1: oklch(0.45 0.12 145);
-  --chart-2: oklch(0.75 0.15 85);
-  --chart-3: oklch(0.55 0.1 145);
-  --chart-4: oklch(0.65 0.12 85);
-  --chart-5: oklch(0.35 0.08 145);
-  --radius: 0.5rem;
-  --sidebar: oklch(0.98 0.005 145);
-  --sidebar-foreground: oklch(0.2 0.02 145);
-  --sidebar-primary: oklch(0.45 0.12 145);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.92 0.02 145);
-  --sidebar-accent-foreground: oklch(0.3 0.05 145);
-  --sidebar-border: oklch(0.88 0.02 145);
-  --sidebar-ring: oklch(0.45 0.12 145);
+  --background: #f4f3ee;
+  --foreground: #202e29;
+  --card: #ffffff;
+  --card-foreground: #202e29;
+  --popover: #ffffff;
+  --popover-foreground: #202e29;
+  --primary: #173f35;
+  --primary-foreground: #ffffff;
+  --secondary: #edf1ed;
+  --secondary-foreground: #294e42;
+  --muted: #f0f1ec;
+  --muted-foreground: #66716a;
+  --accent: #efc46c;
+  --accent-foreground: #493817;
+  --destructive: #bf413b;
+  --destructive-foreground: #ffffff;
+  --border: #dce2da;
+  --input: #d1d9cf;
+  --ring: #397760;
+  --chart-1: #173f35;
+  --chart-2: #efc46c;
+  --chart-3: #568c76;
+  --chart-4: #b68b44;
+  --chart-5: #97b5a3;
+  --radius: 0.75rem;
+  --sidebar: var(--background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--secondary);
+  --sidebar-accent-foreground: var(--secondary-foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
 }
 
 [data-outdoor-mode="true"],
@@ -163,4 +163,45 @@
 
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Opaque surfaces keep scoring legible outdoors and while scrolling. */
+.app-header {
+  min-height: 4rem;
+  box-shadow: none;
+}
+
+.score-summary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+.field-surface {
+  background: var(--secondary);
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent,
+    transparent 18px,
+    color-mix(in srgb, var(--primary) 3%, transparent) 18px,
+    color-mix(in srgb, var(--primary) 3%, transparent) 36px
+  );
+}
+
+/* Toasts must leave the fixed scoring controls available after every play. */
+[data-sonner-toaster][data-y-position="bottom"] {
+  bottom: max(6.5rem, calc(5.5rem + env(safe-area-inset-bottom))) !important;
+}
+
+[data-sonner-toast][data-y-position="bottom"][data-mounted="false"] {
+  --y: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
 }

@@ -1,4 +1,32 @@
-import type { AtBatResult, RunnerMovement } from "./types";
+import type { AtBatResult, RunnerMovement, Snapshot } from "./types";
+
+/** Apply after third-out scoring; the recorded movements remain untouched. */
+export function limitWalkOffScoringMovements({
+  scoringMovements,
+  result,
+  snapshot,
+  regulationInnings,
+}: {
+  scoringMovements: RunnerMovement[];
+  result?: AtBatResult;
+  snapshot: Pick<Snapshot, "inning" | "half" | "score">;
+  regulationInnings: number;
+}): RunnerMovement[] {
+  const runsNeededToWin = snapshot.score.away - snapshot.score.home + 1;
+  if (
+    snapshot.inning < regulationInnings ||
+    snapshot.half !== "bottom" ||
+    result === "homerun" ||
+    scoringMovements.length <= runsNeededToWin
+  ) {
+    return scoringMovements;
+  }
+  // Credit the leading runners even if an import lists movements backwards.
+  const baseOrder = { batter: 0, first: 1, second: 2, third: 3 };
+  return [...scoringMovements]
+    .sort((first, second) => baseOrder[second.from] - baseOrder[first.from])
+    .slice(0, Math.max(0, runsNeededToWin));
+}
 
 type SupportedAtBatResult = AtBatResult | "strikeout" | "doublePlay";
 

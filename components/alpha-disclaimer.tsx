@@ -5,10 +5,10 @@ export function AlphaDisclaimer() {
   return (
     <aside
       role="note"
-      className="flex items-start gap-2.5 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm leading-relaxed text-foreground"
+      className="flex items-start gap-2.5 rounded-xl border border-border bg-muted px-3 py-3 text-xs leading-relaxed text-foreground"
     >
       <TriangleAlert
-        className="mt-0.5 h-4 w-4 shrink-0 text-amber-600"
+        className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
         aria-hidden="true"
       />
       <p>

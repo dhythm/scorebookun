@@ -1,4 +1,5 @@
 import type {
+  AtBatEvent,
   AtBatResult,
   Base,
   BattedBall,
@@ -33,6 +34,35 @@ export function normalizeAtBatResultFromMovements(
     return "fieldersChoice";
   }
   return result;
+}
+
+/** Derive sacrifice credit only after replay has resolved third-out scoring. */
+export function normalizeSacrificeFlyResult(
+  event: AtBatEvent,
+  outsBefore: number,
+  scoringMovements: readonly RunnerMovement[]
+): AtBatResult {
+  if (event.result !== "flyOut" && event.result !== "sacrificeFly") {
+    return event.result;
+  }
+  const hasSacrificeRun =
+    outsBefore < 2 &&
+    scoringMovements.some(
+      (movement) => movement.from !== "batter" && movement.isRBI
+    );
+  if (!hasSacrificeRun) return "flyOut";
+
+  // Preserve an explicit sacrifice for a dropped catch judged by the scorer.
+  if (event.result === "sacrificeFly") return "sacrificeFly";
+  return event.movements.some(
+    (movement) =>
+      movement.playerId === event.batterId &&
+      movement.from === "batter" &&
+      movement.to === "out" &&
+      movement.outType !== "tag"
+  )
+    ? "sacrificeFly"
+    : "flyOut";
 }
 
 interface DefaultMovementContext {

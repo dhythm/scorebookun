@@ -28,7 +28,14 @@ import type { FieldingPosition, Player, Team } from "@/lib/domain/types";
 import { FIELDING_POSITION_LABELS } from "@/lib/domain/catalog";
 import { cn } from "@/lib/utils";
 import { gamePath } from "@/lib/app-state/routes";
-import { ArrowDown, ArrowUp, GripVertical, Plus, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowRight,
+  ArrowUp,
+  GripVertical,
+  Plus,
+  X,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useId, useState } from "react";
 import { toast } from "sonner";
@@ -188,11 +195,22 @@ function TeamSetupForm({
   );
 
   return (
-    <Card className="border-border">
+    <Card className="gap-4 border-border">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold text-foreground">
-          {label}
-        </CardTitle>
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="flex items-center gap-2.5 text-base font-semibold text-foreground">
+            <span
+              className="flex size-7 items-center justify-center rounded-lg bg-primary text-xs text-primary-foreground"
+              aria-hidden="true"
+            >
+              {label === "先攻チーム" ? "先" : "後"}
+            </span>
+            {label}
+          </CardTitle>
+          <span className="font-mono text-xs text-muted-foreground">
+            {team.players.length}人
+          </span>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
@@ -501,9 +519,7 @@ export function GameSetup() {
   const [inningOption, setInningOption] = useState("7");
   const [customInnings, setCustomInnings] = useState("6");
   const totalInnings =
-    inningOption === "custom"
-      ? Number.parseInt(customInnings, 10)
-      : Number.parseInt(inningOption, 10);
+    inningOption === "custom" ? Number(customInnings) : Number(inningOption);
   const inningsValid =
     Number.isInteger(totalInnings) && totalInnings >= 1 && totalInnings <= 20;
 
@@ -543,9 +559,8 @@ export function GameSetup() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 flex items-center justify-between border-b border-primary-foreground/10 bg-primary px-4 pb-2.5 pt-[max(0.625rem,env(safe-area-inset-top))] text-primary-foreground shadow-sm">
+      <header className="app-header sticky top-0 z-40 flex items-center justify-between bg-primary px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-primary-foreground">
         <h1 className="text-lg font-bold flex items-center gap-2">
-          <span className="text-xl">&#9918;</span>
           <AppName />
         </h1>
         <div className="flex items-center gap-0.5">
@@ -554,13 +569,24 @@ export function GameSetup() {
         </div>
       </header>
 
-      <main className="p-4 pb-24 space-y-4 max-w-lg mx-auto lg:max-w-6xl lg:px-6">
-        <AlphaDisclaimer />
+      <main className="mx-auto max-w-lg space-y-5 px-4 pb-36 pt-6 lg:max-w-4xl lg:px-6">
+        <div className="flex items-end justify-between border-b border-border pb-5">
+          <div>
+            <p className="mb-1.5 text-xs font-semibold tracking-widest text-muted-foreground">
+              試合の準備
+            </p>
+            <h2 className="text-[28px] font-bold tracking-tight text-foreground">
+              試合を作成
+            </h2>
+          </div>
+          <span className="mb-1 rounded-lg bg-secondary px-3 py-1.5 text-xs font-medium text-primary">
+            野球スコアブック
+          </span>
+        </div>
         <GameHistory />
-        <h2 className="text-lg font-bold text-foreground">試合を作成</h2>
         <section
           aria-labelledby="setup-preset-title"
-          className="space-y-2 rounded-xl border border-border bg-card p-3 shadow-sm"
+          className="space-y-3 rounded-2xl border border-border bg-card p-4"
         >
           <h2 id="setup-preset-title" className="text-sm font-bold">
             入力プリセット
@@ -568,7 +594,7 @@ export function GameSetup() {
           <Button
             type="button"
             variant="outline"
-            className="min-h-11 w-full"
+            className="min-h-11 w-full border-primary/20 bg-secondary text-primary"
             onClick={applySamplePreset}
           >
             チーム1・チーム2（各9人）を設定
@@ -586,7 +612,8 @@ export function GameSetup() {
                   key={value}
                   type="button"
                   variant={inningOption === value ? "default" : "outline"}
-                  className="h-11 touch-manipulation px-2"
+                  className="h-12 touch-manipulation px-2 font-semibold"
+                  aria-pressed={inningOption === value}
                   onClick={() => setInningOption(value)}
                 >
                   {value === "custom" ? "任意" : `${value}回`}
@@ -631,16 +658,36 @@ export function GameSetup() {
             onTeamChange={setHomeTeam}
           />
         </div>
+        <AlphaDisclaimer />
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-10px_28px_rgba(20,50,28,0.12)]">
-        <div className="max-w-lg mx-auto lg:max-w-6xl lg:px-6">
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-border bg-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-4px_20px_rgba(23,63,53,0.06)]">
+        <div className="mx-auto max-w-lg">
+          <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+            <span>
+              先攻{" "}
+              <span className="font-mono font-semibold text-foreground">
+                {awayTeam.players.length}
+              </span>
+              人 / 後攻{" "}
+              <span className="font-mono font-semibold text-foreground">
+                {homeTeam.players.length}
+              </span>
+              人
+            </span>
+            <span>
+              {canStartGame
+                ? `${totalInnings}回制・準備完了`
+                : "チーム名・打順・守備位置を登録"}
+            </span>
+          </div>
           <Button
             className="w-full h-12 text-base font-semibold"
             disabled={!canStartGame || isCreating}
             onClick={startGame}
           >
             {isCreating ? "作成中…" : "試合を作成して開始"}
+            <ArrowRight className="size-4" aria-hidden="true" />
           </Button>
         </div>
       </div>
