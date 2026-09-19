@@ -12,6 +12,7 @@ import {
   type BaseRunningEventResult,
 } from "@/components/base-running-event-sheet";
 import { SubstitutionSheet } from "@/components/substitution-sheet";
+import { RunnerPlacementSheet } from "@/components/runner-placement-sheet";
 import {
   Sheet,
   SheetContent,
@@ -35,6 +36,7 @@ import {
   createBaseRunningEvent,
   createGameControlEvent,
   createGameNoteEvent,
+  createRunnerPlacementEvent,
   getDefaultMovementsForSelection,
 } from "@/lib/app-state/event-factory";
 import {
@@ -79,6 +81,9 @@ export function LiveScoring() {
   const [initialBaseRunningRunnerId, setInitialBaseRunningRunnerId] = useState<
     string | undefined
   >();
+  const [baseRunningMode, setBaseRunningMode] = useState<"event" | "placement">(
+    "event"
+  );
   const [substitutionOpen, setSubstitutionOpen] = useState(false);
   const [gameNoteOpen, setGameNoteOpen] = useState(false);
   const [gameEndReason, setGameEndReason] = useState("規定回終了");
@@ -86,6 +91,14 @@ export function LiveScoring() {
   if (!game) return null;
 
   const currentBatter = getCurrentBatter(game);
+  const hasRunners = Object.values(game.currentState.runners).some(Boolean);
+
+  const openBaseRunning = (runnerId?: string) => {
+    setInitialBaseRunningRunnerId(runnerId);
+    // With empty bases the only thing left to do is place runners.
+    setBaseRunningMode(hasRunners ? "event" : "placement");
+    setBaseRunningOpen(true);
+  };
 
   const recordEvent = (event: GameEvent, successMessage: string): boolean => {
     const result = addEvent(event);
@@ -282,14 +295,8 @@ export function LiveScoring() {
             <GameSituation
               game={game}
               onRecordResult={() => setAtBatDialogOpen(true)}
-              onOpenBaseRunning={() => {
-                setInitialBaseRunningRunnerId(undefined);
-                setBaseRunningOpen(true);
-              }}
-              onRunnerSelect={(runnerId) => {
-                setInitialBaseRunningRunnerId(runnerId);
-                setBaseRunningOpen(true);
-              }}
+              onOpenBaseRunning={() => openBaseRunning()}
+              onRunnerSelect={(runnerId) => openBaseRunning(runnerId)}
             />
           </section>
           <section className="min-w-0">
@@ -314,15 +321,7 @@ export function LiveScoring() {
             type="button"
             variant="secondary"
             className="h-12 flex-col gap-0 bg-secondary text-[11px] touch-manipulation"
-            disabled={
-              !game.currentState.runners.first &&
-              !game.currentState.runners.second &&
-              !game.currentState.runners.third
-            }
-            onClick={() => {
-              setInitialBaseRunningRunnerId(undefined);
-              setBaseRunningOpen(true);
-            }}
+            onClick={() => openBaseRunning()}
           >
             <Footprints className="h-4 w-4" />
             走塁
@@ -374,15 +373,49 @@ export function LiveScoring() {
             </SheetTitle>
             <SituationMiniHeader game={game} snapshot={game.currentState} />
           </SheetHeader>
-          <BaseRunningEventSheet
-            game={game}
-            initialRunnerId={initialBaseRunningRunnerId}
-            onEvent={(p) => {
-              if (handleBaseRunningEvent(p)) {
-                setBaseRunningOpen(false);
-              }
-            }}
-          />
+          <div className="grid grid-cols-2 gap-2 px-4 pt-4 sm:px-5">
+            {(
+              [
+                ["event", "走塁イベント"],
+                ["placement", "走者を配置"],
+              ] as const
+            ).map(([mode, label]) => (
+              <Button
+                key={mode}
+                type="button"
+                variant={baseRunningMode === mode ? "default" : "outline"}
+                className="h-11 touch-manipulation"
+                onClick={() => setBaseRunningMode(mode)}
+              >
+                {label}
+              </Button>
+            ))}
+          </div>
+          {baseRunningMode === "event" ? (
+            <BaseRunningEventSheet
+              game={game}
+              initialRunnerId={initialBaseRunningRunnerId}
+              onEvent={(p) => {
+                if (handleBaseRunningEvent(p)) {
+                  setBaseRunningOpen(false);
+                }
+              }}
+            />
+          ) : (
+            <RunnerPlacementSheet
+              game={game}
+              onSubmit={(runners) => {
+                if (
+                  recordEvent(
+                    createRunnerPlacementEvent({ id: generateId(), runners }),
+                    "走者を配置しました"
+                  )
+                ) {
+                  setBaseRunningOpen(false);
+                }
+              }}
+            />
+          )}
         </SheetContent>
       </Sheet>
 

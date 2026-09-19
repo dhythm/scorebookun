@@ -43,8 +43,6 @@ export function GameSituation({
   const teamSide = half === "top" ? "away" : "home";
   const batterIndex = game.currentState.currentBatterIndex[teamSide];
 
-  const hasRunners = !!runners.first || !!runners.second || !!runners.third;
-
   return (
     <Card className="gap-0 overflow-hidden rounded-2xl border-border py-0 shadow-[0_8px_24px_rgba(20,50,28,0.07)]">
       <CardContent className="p-0">
@@ -124,12 +122,8 @@ export function GameSituation({
               <Button
                 type="button"
                 variant="outline"
-                disabled={!hasRunners}
-                title={!hasRunners ? "ランナーがいるときに使えます" : undefined}
-                className="h-12 min-w-[9rem] touch-manipulation bg-card disabled:opacity-60"
-                onClick={() => {
-                  if (hasRunners) onOpenBaseRunning();
-                }}
+                className="h-12 min-w-[9rem] touch-manipulation bg-card"
+                onClick={onOpenBaseRunning}
               >
                 走塁・打席外
               </Button>

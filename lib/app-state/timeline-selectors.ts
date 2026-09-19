@@ -42,6 +42,12 @@ export function getPlayerInningEntries(
         (movement) => movement.playerId === playerId
       );
     }
+    if (entry.event.kind === "runnerPlacement") {
+      return Object.values(entry.event.runners).includes(playerId);
+    }
+    if (entry.event.kind === "positionChange") {
+      return entry.event.changes.some((change) => change.playerId === playerId);
+    }
     return (
       entry.event.kind === "substitution" &&
       (entry.event.inPlayerId === playerId ||

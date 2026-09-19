@@ -132,4 +132,31 @@ describe("getRejectedEventIssues", () => {
       ["error"]
     );
   });
+
+  it("collects runner placements and position changes that involve the player", () => {
+    const timeline = [
+      entry("placement", {
+        id: "placement",
+        kind: "runnerPlacement",
+        runners: { first: null, second: "player", third: null },
+      }),
+      entry("other-placement", {
+        id: "other-placement",
+        kind: "runnerPlacement",
+        runners: { first: "someone", second: null, third: null },
+      }),
+      entry("move", {
+        id: "move",
+        kind: "positionChange",
+        team: "away",
+        changes: [{ playerId: "player", position: "pitcher" }],
+      }),
+    ];
+
+    expect(
+      getPlayerInningEntries(timeline, "player", "away", 1).map(
+        ({ event }) => event.id
+      )
+    ).toEqual(["placement", "move"]);
+  });
 });
