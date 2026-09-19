@@ -2,7 +2,7 @@
 
 草野球の試合を、ベンチからスマートフォンで記録するためのスコアリングアプリです。打席、走塁、選手交代、得点、打撃・投手成績を一つの画面で管理できます。
 
-データはすべてブラウザ内に保存されます。アカウント登録は不要で、サーバーへの送信もありません。
+試合を作成すると共有用のURLが発行され、URLを知っている人どうしで同じ試合を同時に記録できます。アカウント登録は不要です。試合データはサーバーのデータベースに保存し、各端末にはオフライン用の控えを持ちます。
 
 ## 目次
 
@@ -34,7 +34,7 @@
 ### 集計・共有
 
 - イニングスコア、打順表、打撃成績、継承走者を考慮した投手別成績の自動集計
-- 最大10試合の履歴保存、再開、削除
+- この端末で開いた試合の履歴表示、再開、履歴からの除外
 - Web Share APIによる結果共有とJSON書き出し
 
 ### PWA対応
@@ -45,7 +45,7 @@
 ## 使い方
 
 1. チーム名、イニング数、選手、守備位置、先発投手を登録する
-2. 「試合を開始」を押す
+2. 「試合を作成して開始」を押し、必要なら共有ボタンからURL・QRコードを他の記録者へ渡す
 3. 打席終了ごとに「結果入力」から結果を選び、必要に応じて走者の進塁を確認する
 4. 走塁だけのプレーや選手交代は、試合画面の専用ボタンから記録する
 5. 誤入力は直前プレーの取り消し、または打順表の記録セルから修正する
@@ -97,29 +97,47 @@
 
 ### セットアップ
 
+試合の作成・保存にはデータベースが必要です。次のどちらかで起動します。
+
+#### Docker（PostgreSQL）で起動する — 通常のローカル開発
+
 ```bash
 pnpm install
+cp .env.example .env   # 初回のみ
+pnpm db:reset          # ボリューム破棄 → 起動 → マイグレーション → シード
 pnpm dev
 ```
 
-`http://localhost:3000` を開きます。
+`http://localhost:3000` を開きます。2回目以降は `pnpm db:up && pnpm dev` だけで構いません。
 
-### 入力プリセットとローカル検証ツール
+- 5432番ポートが使用中の場合は、`.env` の `POSTGRES_PORT` と `DATABASE_URL` 内のポート番号を同じ空き番号へ変更してください。
+- `drizzle/` のマイグレーションが作り直された・追加されたブランチへ切り替えた後は、`pnpm db:reset`（データを捨ててよい場合）または `pnpm db:migrate` を実行してください。
+
+| コマンド           | 内容                                                              |
+| ------------------ | ----------------------------------------------------------------- |
+| `pnpm db:up`       | PostgreSQLを起動し、接続可能になるまで待つ                        |
+| `pnpm db:migrate`  | `drizzle/` のマイグレーションを適用                               |
+| `pnpm db:seed`     | シード試合を初期状態へ戻す（自分で作った試合はそのまま）          |
+| `pnpm db:down`     | 停止（データは残る）                                              |
+| `pnpm db:reset`    | データごと作り直す（ボリューム破棄→起動→マイグレーション→シード） |
+| `pnpm db:generate` | `lib/db/schema.ts` の変更からマイグレーションを生成               |
+
+#### PGlite で起動する — Dockerがない環境（エージェントのサンドボックスなど）
+
+```bash
+pnpm install
+DATABASE_DRIVER=pglite PGLITE_DATA_DIR= pnpm dev
+```
+
+- `.env` は不要です（コマンドで渡した環境変数が `.env` より優先されます）。
+- データベースはNext.jsのプロセス内のメモリ上に作られ、最初のAPIアクセス時にマイグレーションとシード試合の投入が自動で行われます。サーバーを止めるとデータは消えます。
+- データを残したい場合は `PGLITE_DATA_DIR=.pglite` を指定します。この場合シードは自動投入されないため、**devサーバーを止めた状態で** `pnpm db:migrate && pnpm db:seed` を実行してください（PGliteのデータディレクトリは同時に1プロセスしか開けません）。
+
+起動後は `/` で試合を作成するか、`/games/seed-live-slugfest` などの[シード試合](#シード試合)を直接開いて確認できます。
+
+### 入力プリセット
 
 セットアップ画面の入力プリセットは、`チーム1`・`チーム2`と、それぞれの`選手1`〜`選手9`、標準の守備位置をまとめて入力します。このプリセットは本番環境でも利用できます。
-
-`pnpm dev` で起動した場合は、通常プリセットとは別に「ローカル検証ツール」が表示されます。次の8パターンを選んで、各画面と集計を確認できます。
-
-1. 1対0の投手戦
-2. 乱打戦
-3. 満塁サヨナラ
-4. 延長戦
-5. DHでの投手交代
-6. 代走・盗塁・代打
-7. フォース第3アウト
-8. 小技・特殊プレー
-
-検証ツールは開発環境専用で、`pnpm build` した本番環境には表示されません。
 
 ### 品質確認
 
@@ -135,9 +153,9 @@ pnpm dev
 
 すべてをまとめて確認する場合は `pnpm check` を実行します。コードをPrettierで整形する場合は `pnpm format` を使用してください。
 
-GitHub Actionsでは、Pull Requestと`main`へのpush時に、format、lint、TypeScript、Knip、test、E2E、PostgreSQLへのマイグレーションを独立したジョブとして並列実行します。
+GitHub Actionsでは、Pull Requestと`main`へのpush時に、format、lint、TypeScript、Knip、test、E2E、PostgreSQLへのマイグレーションとシード投入を独立したジョブとして並列実行します。
 
-E2Eを初めて実行する前に `pnpm exec playwright install chromium` でブラウザを取得してください。
+E2Eを初めて実行する前に `pnpm exec playwright install chromium` でブラウザを取得してください。E2EはインメモリのPGliteで動くため、DockerもDBの準備も不要です。Next.js 16は同じディレクトリで `next dev` を同時に1つしか起動できないので、`pnpm dev` を起動したままE2Eを実行する場合は `CI=1 pnpm test:e2e`（本番ビルドで実行）を使ってください。
 
 Knipでは、ブラウザから直接読み込まれる `public/sw.js` のみを実行時ファイルとして検査対象外にしています。
 
@@ -151,13 +169,50 @@ Drizzle ORMでPostgreSQLに接続します。接続先は環境変数 `DATABASE_
 | `pglite`             | Dockerを使えないエージェント環境 | `PGLITE_DATA_DIR`（空ならメモリ） |
 | `neon`               | デプロイ環境（Neon）             | `DATABASE_URL`                    |
 
-```bash
-cp .env.example .env
-pnpm db:up        # PostgreSQLをDockerで起動
-pnpm db:migrate   # drizzle/ のマイグレーションを適用
+起動手順は[セットアップ](#セットアップ)を参照してください。`neon` への `pnpm db:migrate` は本番データベースを変更するため、実行前に必ず接続先を確認してください。
+
+#### スキーマ
+
+```mermaid
+erDiagram
+  games ||--|{ game_teams : "away / home"
+  games ||--o{ game_players : "lineup / bench"
+  games ||--o{ game_events : "active / deleted"
+  game_events ||--o{ event_runner_movements : ""
 ```
 
-Dockerがない環境では `.env` の `DATABASE_DRIVER` を `pglite` にして `pnpm db:migrate` を実行します。5432番ポートが使用中の場合は `.env` の `POSTGRES_PORT` と `DATABASE_URL` を変更してください。
+| テーブル                 | 内容                                                                                                        |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `games`                  | 試合ID、楽観ロック用の `version` と `last_mutation_id`、状態、開始日時、規定イニング                        |
+| `game_teams`             | 先攻・後攻のチーム名、先発投手                                                                              |
+| `game_players`           | スタメンと控え（`roster_role`）、打順、守備位置、リスト内の並び（`sequence`）                               |
+| `game_events`            | 打席・走塁・交代・試合終了・メモ。`kind` ごとの必須列を CHECK 制約で保証。ゴミ箱は `state = 'deleted'` の行 |
+| `event_runner_movements` | 各プレーでの走者の動き（どこから・どこへ・打点・アウトの種類）                                              |
+
+- 保存するのは「記録されたこと」だけです。得点・イニング・個人成績は従来どおり `lib/domain/replay.ts` がイベントから算出し、DBには持ちません。
+- イベント内の選手IDには外部キーを張っていません。未知の選手IDは保存を拒否せず、アプリが警告として扱う仕様のためです。
+- APIの入出力（JSON）はテーブル構成に依存しません。変換は `lib/server/game-rows.ts` に閉じています。
+- 保存時は楽観ロックの `UPDATE` と同じトランザクションで、その試合の子テーブルの行を置き換えます。
+
+#### シード試合
+
+「すでに誰かが作成して記録している試合」を、開始前・試合中・終了後にまたがって用意しています。
+
+| URL                                | 内容                                                                         |
+| ---------------------------------- | ---------------------------------------------------------------------------- |
+| `/games/seed-before-first-pitch`   | 試合開始前。オーダー登録済み（後攻はDH制・控えあり）、プレー未記録           |
+| `/games/seed-live-pitchers-duel`   | 試合中（序盤）。0対0の投手戦                                                 |
+| `/games/seed-live-slugfest`        | 試合中（中盤）。乱打戦。盗塁・失策・暴投・代打・代走・投手交代・メモ・ゴミ箱 |
+| `/games/seed-live-last-chance`     | 試合中（終盤）。最終回裏・同点・2死満塁                                      |
+| `/games/seed-live-extra-innings`   | 試合中（延長）。延長8回表                                                    |
+| `/games/seed-finished-walk-off`    | 試合終了。逆転サヨナラ本塁打                                                 |
+| `/games/seed-finished-shutout`     | 試合終了。後攻の完封勝ち（最終回裏なし）                                     |
+| `/games/seed-finished-called-game` | 試合終了。雨天コールド（手動終了）                                           |
+
+- Docker: `pnpm db:seed`（何度実行してもシード試合だけを初期状態へ戻し、自分で作った試合には触れません）。`pnpm db:reset` はボリューム破棄→起動→マイグレーション→シードをまとめて行います。
+- インメモリのPGlite（`DATABASE_DRIVER=pglite` で `PGLITE_DATA_DIR` が空。エージェント環境とE2E）は、起動時に自動でシードされます。
+- `neon` ドライバに対する `db:seed` は拒否します。
+- シードは `lib/seed/seed-games.ts` にスコアブック記法（`"1B7 SB K G6 F8"` など）で定義しています。全試合がルール違反0件で再生できることをテストで保証しています。
 
 スキーマ（`lib/db/schema.ts`）を変更したら `pnpm db:generate` でマイグレーションを生成します。Vitestの結合テストはメモリ上のPGliteで動くため、DockerもDB起動も不要です。
 
@@ -171,11 +226,12 @@ lib/domain/           ルール、replay、統計、表記、投手成績
 lib/storage/          端末側の控え（localStorage）、schema検証、同期メタ情報
 lib/export/           テキスト共有、JSON書き出し
 lib/db/               Drizzleのスキーマ、接続設定、ドライバ別クライアント
-lib/server/           試合の保存（楽観ロック）とAPIハンドラ
+lib/server/           試合の保存（楽観ロック）、行との相互変換、APIハンドラ、シード投入
+lib/seed/             シード試合の定義とスコアシート・ビルダー
 lib/sync/             APIクライアント、同期エンジン（再送・ポーリング・衝突検知）
 app/api/games/        試合の作成・取得・保存API
 drizzle/              生成されたSQLマイグレーション
-scripts/              マイグレーション実行スクリプト
+scripts/              マイグレーション・シード投入スクリプト
 e2e/                  PlaywrightのE2Eテスト
 public/sw.js          オフラインキャッシュ
 ```

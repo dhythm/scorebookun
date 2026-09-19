@@ -88,3 +88,29 @@ fload research, exploration, and parallel analysis to subagents
 
 - use `pnpm` as a package manager
 - use `vitest` for testing
+- use `playwright` for E2E (`pnpm test:e2e`); run `pnpm check` before calling a task done
+
+### Running the app
+
+The app needs a database. Details are in the "セットアップ" section of `README.md`.
+
+- Without Docker (agent sandboxes): `DATABASE_DRIVER=pglite PGLITE_DATA_DIR= pnpm dev`.
+  The database is in memory, migrated and seeded automatically on the first API request, and gone when the server stops.
+- With Docker: `cp .env.example .env` once, then `pnpm db:reset` and `pnpm dev`.
+  If port 5432 is taken, change `POSTGRES_PORT` and the port inside `DATABASE_URL` in `.env`.
+- Seed games have fixed URLs such as `/games/seed-live-slugfest` and `/games/seed-finished-walk-off`
+  (full list in `README.md`). Use them instead of clicking through game setup when verifying a screen.
+- Only one `next dev` can run per directory. If a dev server is already running (often the user's), do not kill it;
+  run E2E with `CI=1 pnpm test:e2e`, and start any extra server with `pnpm build && pnpm start --port <free port>`.
+- Unit and integration tests need no database setup: they create an in-memory PGlite themselves.
+
+### Database rules
+
+- Change `lib/db/schema.ts`, then run `pnpm db:generate`; never edit files in `drizzle/` by hand.
+- Keep the API JSON (`SharedGame`) independent of the tables; map between them only in `lib/server/game-rows.ts`.
+- Store only what scorers recorded. Scores and statistics are derived by `lib/domain/replay.ts`, never persisted.
+- Every save must go through the version check in `lib/server/game-store.ts` (optimistic locking).
+- NEVER run `db:migrate`, `db:seed`, or any script against a remote database (`DATABASE_DRIVER=neon`)
+  without the user's explicit confirmation. `db:seed` refuses `neon` by design; do not work around it.
+- When verifying against Docker yourself, use a throwaway project and port
+  (`docker compose -p scorebookun-verify ...`) so the user's local data is never touched.
