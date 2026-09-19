@@ -239,6 +239,8 @@ export const gameEvents = pgTable(
         when 'atBat' then ${table.batterId} is not null and ${table.atBatResult} is not null
         when 'baseRunning' then ${table.baseRunningType} is not null
         when 'substitution' then ${table.substitutionSide} is not null and ${table.inPlayerId} is not null and ${table.outPlayerId} is not null and ${table.substitutionRole} is not null
+        when 'positionChange' then ${table.positionChangeSide} is not null
+        when 'runnerPlacement' then true
         when 'gameControl' then ${table.controlAction} is not null
         when 'note' then ${table.noteText} is not null
       end`

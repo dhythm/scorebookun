@@ -1,8 +1,8 @@
 CREATE TYPE "public"."at_bat_result" AS ENUM('single', 'double', 'triple', 'homerun', 'groundOut', 'flyOut', 'strikeout', 'strikeoutSwinging', 'strikeoutLooking', 'doublePlay', 'otherOut', 'walk', 'hitByPitch', 'error', 'sacrifice', 'sacrificeFly', 'fieldersChoice', 'interference', 'uncaughtThirdStrike');--> statement-breakpoint
-CREATE TYPE "public"."base_running_type" AS ENUM('steal', 'caughtStealing', 'wildPitch', 'passedBall', 'pickOff', 'balk');--> statement-breakpoint
+CREATE TYPE "public"."base_running_type" AS ENUM('steal', 'caughtStealing', 'wildPitch', 'passedBall', 'pickOff', 'balk', 'otherAdvance', 'otherOut');--> statement-breakpoint
 CREATE TYPE "public"."batted_ball_depth" AS ENUM('shallow', 'deep');--> statement-breakpoint
 CREATE TYPE "public"."batted_ball_type" AS ENUM('ground', 'fly', 'liner', 'bunt');--> statement-breakpoint
-CREATE TYPE "public"."event_kind" AS ENUM('atBat', 'baseRunning', 'substitution', 'gameControl', 'note');--> statement-breakpoint
+CREATE TYPE "public"."event_kind" AS ENUM('atBat', 'baseRunning', 'substitution', 'gameControl', 'note', 'positionChange', 'runnerPlacement');--> statement-breakpoint
 CREATE TYPE "public"."event_state" AS ENUM('active', 'deleted');--> statement-breakpoint
 CREATE TYPE "public"."fielding_position" AS ENUM('pitcher', 'catcher', 'first', 'second', 'third', 'short', 'left', 'center', 'right', 'dh');--> statement-breakpoint
 CREATE TYPE "public"."game_control_action" AS ENUM('endGame');--> statement-breakpoint
@@ -13,6 +13,15 @@ CREATE TYPE "public"."runner_destination" AS ENUM('first', 'second', 'third', 'h
 CREATE TYPE "public"."runner_origin" AS ENUM('batter', 'first', 'second', 'third');--> statement-breakpoint
 CREATE TYPE "public"."substitution_role" AS ENUM('pinchHitter', 'pinchRunner', 'fielder', 'pitcher');--> statement-breakpoint
 CREATE TYPE "public"."team_side" AS ENUM('away', 'home');--> statement-breakpoint
+CREATE TABLE "event_position_changes" (
+	"game_id" text NOT NULL,
+	"event_id" text NOT NULL,
+	"sequence" integer NOT NULL,
+	"player_id" text NOT NULL,
+	"position" "fielding_position" NOT NULL,
+	CONSTRAINT "event_position_changes_game_id_event_id_sequence_pk" PRIMARY KEY("game_id","event_id","sequence")
+);
+--> statement-breakpoint
 CREATE TABLE "event_runner_movements" (
 	"game_id" text NOT NULL,
 	"event_id" text NOT NULL,
@@ -46,6 +55,11 @@ CREATE TABLE "game_events" (
 	"in_player_id" text,
 	"out_player_id" text,
 	"substitution_role" "substitution_role",
+	"substitution_position" "fielding_position",
+	"position_change_side" "team_side",
+	"placed_first_id" text,
+	"placed_second_id" text,
+	"placed_third_id" text,
 	"control_action" "game_control_action",
 	"control_reason" text,
 	"note_text" text,
@@ -57,6 +71,8 @@ CREATE TABLE "game_events" (
         when 'atBat' then "game_events"."batter_id" is not null and "game_events"."at_bat_result" is not null
         when 'baseRunning' then "game_events"."base_running_type" is not null
         when 'substitution' then "game_events"."substitution_side" is not null and "game_events"."in_player_id" is not null and "game_events"."out_player_id" is not null and "game_events"."substitution_role" is not null
+        when 'positionChange' then "game_events"."position_change_side" is not null
+        when 'runnerPlacement' then true
         when 'gameControl' then "game_events"."control_action" is not null
         when 'note' then "game_events"."note_text" is not null
       end)
@@ -96,6 +112,7 @@ CREATE TABLE "games" (
 	CONSTRAINT "games_regulation_innings_range" CHECK ("games"."regulation_innings" between 1 and 20)
 );
 --> statement-breakpoint
+ALTER TABLE "event_position_changes" ADD CONSTRAINT "event_position_changes_event" FOREIGN KEY ("game_id","event_id") REFERENCES "public"."game_events"("game_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "event_runner_movements" ADD CONSTRAINT "event_runner_movements_event" FOREIGN KEY ("game_id","event_id") REFERENCES "public"."game_events"("game_id","id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "game_events" ADD CONSTRAINT "game_events_game_id_games_id_fk" FOREIGN KEY ("game_id") REFERENCES "public"."games"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "game_players" ADD CONSTRAINT "game_players_game_id_games_id_fk" FOREIGN KEY ("game_id") REFERENCES "public"."games"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
