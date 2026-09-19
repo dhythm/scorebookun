@@ -77,3 +77,18 @@ test("an unknown game URL explains that the game does not exist", async ({
     page.getByRole("heading", { name: "試合が見つかりません" })
   ).toBeVisible();
 });
+
+test("the share dialog shows a QR code for the game URL", async ({ page }) => {
+  const url = await createGame(page);
+
+  await page.getByRole("button", { name: "試合のURLを共有" }).click();
+
+  const dialog = page.getByRole("dialog", { name: "試合を共有" });
+  await expect(
+    dialog.getByRole("img", { name: "試合URLのQRコード" })
+  ).toBeVisible();
+  await expect(dialog.getByText(url)).toBeVisible();
+  await expect(
+    dialog.getByRole("button", { name: "URLをコピー" })
+  ).toBeVisible();
+});
