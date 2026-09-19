@@ -267,6 +267,74 @@ describe("scoring UI flows", () => {
     });
   });
 
+  it("records one runner safe and another out in the same base-running play", async () => {
+    const user = userEvent.setup();
+    const onEvent = vi.fn();
+    render(
+      <BaseRunningEventSheet
+        game={createGame(runnersOnFirstAndSecond)}
+        onEvent={onEvent}
+      />
+    );
+
+    await user.click(screen.getByRole("checkbox", { name: "2塁・先頭打者" }));
+    await user.click(screen.getByRole("checkbox", { name: "1塁・二番打者" }));
+    // Runner cards are listed from first base up.
+    await user.click(screen.getAllByRole("radio", { name: "アウト" })[0]);
+    await user.click(screen.getByRole("button", { name: "走塁を記録" }));
+
+    expect(onEvent).toHaveBeenCalledWith({
+      type: "steal",
+      movements: [
+        { playerId: "away-1", from: "second", to: "third", isRBI: false },
+        { playerId: "away-2", from: "first", to: "out", isRBI: false },
+      ],
+    });
+  });
+
+  it("records an advance that is none of the named base-running plays", async () => {
+    const user = userEvent.setup();
+    const onEvent = vi.fn();
+    render(
+      <BaseRunningEventSheet
+        game={createGame([runnerOnFirst])}
+        onEvent={onEvent}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "その他の進塁" }));
+    await user.click(screen.getByRole("radio", { name: "3塁" }));
+    await user.click(screen.getByRole("button", { name: "走塁を記録" }));
+
+    expect(onEvent).toHaveBeenCalledWith({
+      type: "otherAdvance",
+      movements: [
+        { playerId: "away-1", from: "first", to: "third", isRBI: false },
+      ],
+    });
+  });
+
+  it("defaults a running out to out for the selected runner", async () => {
+    const user = userEvent.setup();
+    const onEvent = vi.fn();
+    render(
+      <BaseRunningEventSheet
+        game={createGame([runnerOnFirst])}
+        onEvent={onEvent}
+      />
+    );
+
+    await user.click(screen.getByRole("button", { name: "走塁死" }));
+    await user.click(screen.getByRole("button", { name: "走塁を記録" }));
+
+    expect(onEvent).toHaveBeenCalledWith({
+      type: "otherOut",
+      movements: [
+        { playerId: "away-1", from: "first", to: "out", isRBI: false },
+      ],
+    });
+  });
+
   it("opens runner input from an occupied base with a touch-sized button", async () => {
     const user = userEvent.setup();
     const onRunnerSelect = vi.fn();

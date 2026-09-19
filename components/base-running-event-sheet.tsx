@@ -51,7 +51,15 @@ const EVENT_TYPES: { type: BaseRunningType; label: string; isOut: boolean }[] =
     { type: "passedBall", label: "捕逸", isOut: false },
     { type: "pickOff", label: "牽制死", isOut: true },
     { type: "balk", label: "ボーク", isOut: false },
+    { type: "otherAdvance", label: "その他の進塁", isOut: false },
+    { type: "otherOut", label: "走塁死", isOut: true },
   ];
+
+function destinationLabel(destination: RunnerDestination): string {
+  if (destination === "out") return "アウト";
+  if (destination === "home") return "ホーム";
+  return destination === "second" ? "2塁" : "3塁";
+}
 
 export function BaseRunningEventSheet({
   game,
@@ -64,7 +72,15 @@ export function BaseRunningEventSheet({
   const effectiveSnapshot = snapshot ?? game.currentState;
   const runners = effectiveSnapshot.runners;
   const teamSide: TeamSide = effectiveSnapshot.half === "top" ? "away" : "home";
-  const battingTeam = game.config.teams[teamSide];
+  // Substitutes bat too, so credit goes to whoever is in the lineup now.
+  const activeBatters = effectiveSnapshot.activeLineup[teamSide].flatMap(
+    (playerId, index) => {
+      const player = getPlayerById(game, playerId);
+      return player
+        ? [{ id: playerId, name: player.name, order: index + 1 }]
+        : [];
+    }
+  );
   const [selectedType, setSelectedType] = useState<BaseRunningType>(
     initialEvent?.type ?? "steal"
   );
@@ -119,11 +135,13 @@ export function BaseRunningEventSheet({
   }, [game, runners]);
 
   const eventType = EVENT_TYPES.find((option) => option.type === selectedType)!;
+  const defaultDestination = (base: Base, isOut: boolean): RunnerDestination =>
+    isOut ? "out" : getConventionalAdvanceDestination(base);
   const hasHomeDestination = selectedRunnerIds.some(
     (playerId) => destinationByRunnerId[playerId] === "home"
   );
-  const allDestinationsSelected = selectedRunnerIds.every(
-    (playerId) => eventType.isOut || Boolean(destinationByRunnerId[playerId])
+  const allDestinationsSelected = selectedRunnerIds.every((playerId) =>
+    Boolean(destinationByRunnerId[playerId])
   );
   const canSubmit =
     selectedRunnerIds.length > 0 &&
@@ -145,6 +163,7 @@ export function BaseRunningEventSheet({
     setDestinationByRunnerId({
       [runner.id]: getConventionalAdvanceDestination(runner.base),
     });
+    // Only the first render picks a runner; the event type is still "steal".
   }, [initialEvent, initialRunnerId, runnerOptions]);
 
   const toggleRunner = (playerId: string, checked: boolean) => {
@@ -153,11 +172,12 @@ export function BaseRunningEventSheet({
     );
     if (checked) {
       const runner = runnerOptions.find((option) => option.id === playerId);
-      if (runner && !eventType.isOut) {
+      if (runner) {
         setDestinationByRunnerId((current) => ({
           ...current,
           [playerId]:
-            current[playerId] ?? getConventionalAdvanceDestination(runner.base),
+            current[playerId] ??
+            defaultDestination(runner.base, eventType.isOut),
         }));
       }
     }
@@ -175,7 +195,7 @@ export function BaseRunningEventSheet({
     const movements = selectedRunnerIds.flatMap((playerId) => {
       const runner = runnerOptions.find((option) => option.id === playerId);
       if (!runner) return [];
-      const to = eventType.isOut ? "out" : destinationByRunnerId[playerId];
+      const to = destinationByRunnerId[playerId];
       if (!to) return [];
       return [
         {
@@ -215,25 +235,21 @@ export function BaseRunningEventSheet({
               onClick={() => {
                 setSelectedType(option.type);
                 setDestinationByRunnerId(
-                  option.isOut
-                    ? {}
-                    : Object.fromEntries(
-                        selectedRunnerIds.flatMap((playerId) => {
-                          const runner = runnerOptions.find(
-                            (candidate) => candidate.id === playerId
-                          );
-                          return runner
-                            ? [
-                                [
-                                  playerId,
-                                  getConventionalAdvanceDestination(
-                                    runner.base
-                                  ),
-                                ],
-                              ]
-                            : [];
-                        })
-                      )
+                  Object.fromEntries(
+                    selectedRunnerIds.flatMap((playerId) => {
+                      const runner = runnerOptions.find(
+                        (candidate) => candidate.id === playerId
+                      );
+                      return runner
+                        ? [
+                            [
+                              playerId,
+                              defaultDestination(runner.base, option.isOut),
+                            ],
+                          ]
+                        : [];
+                    })
+                  )
                 );
                 setCreditRbi(false);
                 setRbiBatterId("");
@@ -270,7 +286,7 @@ export function BaseRunningEventSheet({
                   ・{runner.name}
                 </span>
               </label>
-              {selected && !eventType.isOut && (
+              {selected && (
                 <ToggleGroup
                   type="single"
                   variant="outline"
@@ -282,23 +298,22 @@ export function BaseRunningEventSheet({
                       [runner.id]: value as RunnerDestination,
                     }))
                   }
-                  className="grid w-full grid-cols-3 gap-2"
+                  className="grid w-full grid-cols-4 gap-2"
                 >
-                  {getSafeRunnerDestinations(runner.base)
-                    .filter((destination) => destination !== runner.base)
-                    .map((destination) => (
-                      <ToggleGroupItem
-                        key={destination}
-                        value={destination}
-                        className="min-h-11"
-                      >
-                        {destination === "second"
-                          ? "2塁"
-                          : destination === "third"
-                            ? "3塁"
-                            : "ホーム"}
-                      </ToggleGroupItem>
-                    ))}
+                  {[
+                    ...getSafeRunnerDestinations(runner.base).filter(
+                      (destination) => destination !== runner.base
+                    ),
+                    "out" as const,
+                  ].map((destination) => (
+                    <ToggleGroupItem
+                      key={destination}
+                      value={destination}
+                      className="min-h-11 data-[state=on]:font-bold"
+                    >
+                      {destinationLabel(destination)}
+                    </ToggleGroupItem>
+                  ))}
                 </ToggleGroup>
               )}
             </div>
@@ -324,7 +339,7 @@ export function BaseRunningEventSheet({
                 <SelectValue placeholder="打点を付ける打者" />
               </SelectTrigger>
               <SelectContent>
-                {battingTeam.players.map((player) => (
+                {activeBatters.map((player) => (
                   <SelectItem key={player.id} value={player.id}>
                     #{player.order} {player.name}
                   </SelectItem>
