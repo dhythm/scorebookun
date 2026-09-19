@@ -356,6 +356,28 @@ function isStoredGameEvent(event: unknown): boolean {
       typeof event.outPlayerId === "string" &&
       ["pinchHitter", "pinchRunner", "fielder", "pitcher"].includes(
         String(event.role)
+      ) &&
+      (event.position === undefined || isFieldingPosition(event.position))
+    );
+  }
+  if (event.kind === "positionChange") {
+    return (
+      ["away", "home"].includes(String(event.team)) &&
+      Array.isArray(event.changes) &&
+      event.changes.every(
+        (change) =>
+          isRecord(change) &&
+          typeof change.playerId === "string" &&
+          isFieldingPosition(change.position)
+      )
+    );
+  }
+  if (event.kind === "runnerPlacement") {
+    const runners = event.runners;
+    return (
+      isRecord(runners) &&
+      (["first", "second", "third"] as const).every(
+        (base) => runners[base] === null || typeof runners[base] === "string"
       )
     );
   }
@@ -410,6 +432,10 @@ const FIELDING_POSITIONS = new Set([
   "dh",
 ]);
 
+function isFieldingPosition(value: unknown): boolean {
+  return typeof value === "string" && FIELDING_POSITIONS.has(value);
+}
+
 const AT_BAT_RESULTS = new Set([
   "single",
   "double",
@@ -439,6 +465,8 @@ const BASE_RUNNING_TYPES = new Set([
   "passedBall",
   "pickOff",
   "balk",
+  "otherAdvance",
+  "otherOut",
 ]);
 
 const RUNNER_ORIGINS = new Set(["batter", "first", "second", "third"]);

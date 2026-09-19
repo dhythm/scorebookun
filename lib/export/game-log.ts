@@ -54,7 +54,10 @@ export function exportGameAsText(game: PersistedGameV2): string {
       `${entry.inning}回${HALF_LABEL[entry.half]} ` +
       `${entry.outsBefore}アウト`;
     lines.push(
-      event.kind === "gameControl" || event.kind === "note"
+      event.kind === "gameControl" ||
+        event.kind === "note" ||
+        event.kind === "positionChange" ||
+        event.kind === "runnerPlacement"
         ? `${situation} ${formatEventNotation(event)}`
         : `${situation} ${actor}: ${formatEventNotation(event)}${note}`
     );

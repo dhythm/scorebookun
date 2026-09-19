@@ -1,8 +1,11 @@
 import type {
   Base,
+  FieldingPosition,
   GameConfig,
   GameEvent,
+  PositionChangeEvent,
   ReplayResult,
+  RunnerPlacementEvent,
   Snapshot,
   SubstitutionEvent,
   TeamSide,
@@ -30,6 +33,18 @@ function initialSnapshot(config: GameConfig): Snapshot {
       ?.id ??
     null;
 
+  const initialPositions = (
+    team: TeamSide
+  ): Record<string, FieldingPosition> => {
+    const positions: Record<string, FieldingPosition> = {};
+    for (const player of config.teams[team].players) {
+      if (player.position) positions[player.id] = player.position;
+    }
+    const pitcherId = initialPitcherId(team);
+    if (pitcherId) positions[pitcherId] = "pitcher";
+    return positions;
+  };
+
   return {
     inning: 1,
     half: "top",
@@ -42,6 +57,10 @@ function initialSnapshot(config: GameConfig): Snapshot {
     activePitcherId: {
       away: initialPitcherId("away"),
       home: initialPitcherId("home"),
+    },
+    fieldingPositions: {
+      away: initialPositions("away"),
+      home: initialPositions("home"),
     },
     currentBatterIndex: { away: 0, home: 0 },
     score: { away: 0, home: 0 },
@@ -58,6 +77,10 @@ function copySnapshot(snapshot: Snapshot): Snapshot {
       home: [...snapshot.activeLineup.home],
     },
     activePitcherId: { ...snapshot.activePitcherId },
+    fieldingPositions: {
+      away: { ...snapshot.fieldingPositions.away },
+      home: { ...snapshot.fieldingPositions.home },
+    },
     currentBatterIndex: { ...snapshot.currentBatterIndex },
     score: { ...snapshot.score },
   };
@@ -219,6 +242,23 @@ function validateEvent(
     return violations;
   }
   if (event.kind === "gameControl") return violations;
+  if (event.kind === "positionChange") {
+    return [
+      ...violations,
+      ...validatePositionChange(event, eventIndex, snapshot),
+    ];
+  }
+  if (event.kind === "runnerPlacement") {
+    return [
+      ...violations,
+      ...validateRunnerPlacement(
+        event,
+        eventIndex,
+        offensivePlayerIds,
+        allPlayerIds
+      ),
+    ];
+  }
 
   const outsInPlay = event.movements.filter(
     (movement) => movement.to === "out"
@@ -447,8 +487,132 @@ function validateSubstitution(
   return violations;
 }
 
+function validatePositionChange(
+  event: PositionChangeEvent,
+  eventIndex: number,
+  snapshot: Snapshot
+): Violation[] {
+  const violations: Violation[] = [];
+  if (event.changes.length === 0) {
+    violations.push(
+      violation(
+        event,
+        eventIndex,
+        "EMPTY_POSITION_CHANGE",
+        "error",
+        "position change must move at least one player"
+      )
+    );
+  }
+  const seenPlayerIds = new Set<string>();
+  for (const change of event.changes) {
+    const isActive =
+      snapshot.activeLineup[event.team].includes(change.playerId) ||
+      snapshot.activePitcherId[event.team] === change.playerId;
+    if (!isActive) {
+      violations.push(
+        violation(
+          event,
+          eventIndex,
+          "POSITION_CHANGE_PLAYER_NOT_ACTIVE",
+          "error",
+          `player ${change.playerId} is not in the game`
+        )
+      );
+    }
+    if (seenPlayerIds.has(change.playerId)) {
+      violations.push(
+        violation(
+          event,
+          eventIndex,
+          "DUPLICATE_RUNNER_MOVEMENT",
+          "error",
+          `player ${change.playerId} appears more than once`
+        )
+      );
+    }
+    seenPlayerIds.add(change.playerId);
+  }
+  return violations;
+}
+
+function validateRunnerPlacement(
+  event: RunnerPlacementEvent,
+  eventIndex: number,
+  offensivePlayerIds: ReadonlySet<string>,
+  allPlayerIds: ReadonlySet<string>
+): Violation[] {
+  const violations: Violation[] = [];
+  const seenPlayerIds = new Set<string>();
+  for (const base of ["first", "second", "third"] as const) {
+    const playerId = event.runners[base];
+    if (playerId === null) continue;
+    if (!allPlayerIds.has(playerId)) {
+      violations.push(
+        violation(
+          event,
+          eventIndex,
+          "UNKNOWN_PLAYER",
+          "error",
+          `unknown runner ${playerId}`
+        )
+      );
+    } else if (!offensivePlayerIds.has(playerId)) {
+      violations.push(
+        violation(
+          event,
+          eventIndex,
+          "PLAYER_NOT_ON_OFFENSE",
+          "error",
+          `runner ${playerId} is not on the offensive team`
+        )
+      );
+    }
+    if (seenPlayerIds.has(playerId)) {
+      violations.push(
+        violation(
+          event,
+          eventIndex,
+          "DUPLICATE_RUNNER_MOVEMENT",
+          "error",
+          `runner ${playerId} appears more than once`
+        )
+      );
+    }
+    seenPlayerIds.add(playerId);
+  }
+  return violations;
+}
+
 function eventTeam(event: GameEvent, snapshot: Snapshot): TeamSide {
-  return event.kind === "substitution" ? event.team : offense(snapshot);
+  return event.kind === "substitution" || event.kind === "positionChange"
+    ? event.team
+    : offense(snapshot);
+}
+
+/** Timeline entry for an applied event that records no outs or runs. */
+function stateChangeEntry(
+  event: GameEvent,
+  index: number,
+  team: TeamSide,
+  before: Snapshot,
+  after: Snapshot
+): TimelineEntry {
+  return {
+    event,
+    index,
+    inning: before.inning,
+    half: before.half,
+    team,
+    outsBefore: before.outs,
+    outsAfter: before.outs,
+    outsRecorded: 0,
+    runsScored: 0,
+    scoringMovements: [],
+    applied: true,
+    before,
+    after,
+  };
 }
 
 function rejectedEntry(
@@ -620,7 +784,17 @@ export function replay(
       if (slot >= 0) {
         snapshot.activeLineup[event.team][slot] = event.inPlayerId;
       }
-      if (event.role === "pitcher") {
+      const positions = snapshot.fieldingPositions[event.team];
+      const inheritedPosition =
+        event.role === "pitcher"
+          ? "pitcher"
+          : event.role === "fielder"
+            ? positions[event.outPlayerId]
+            : undefined;
+      const position = event.position ?? inheritedPosition;
+      delete positions[event.outPlayerId];
+      if (position) positions[event.inPlayerId] = position;
+      if (event.role === "pitcher" || position === "pitcher") {
         snapshot.activePitcherId[event.team] = event.inPlayerId;
       }
       if (event.role === "pinchRunner") {
@@ -646,6 +820,28 @@ export function replay(
         before,
         after,
       });
+      continue;
+    }
+
+    if (event.kind === "positionChange") {
+      for (const change of event.changes) {
+        snapshot.fieldingPositions[event.team][change.playerId] =
+          change.position;
+        if (change.position === "pitcher") {
+          snapshot.activePitcherId[event.team] = change.playerId;
+        }
+      }
+      timeline.push(
+        stateChangeEntry(event, index, team, before, copySnapshot(snapshot))
+      );
+      continue;
+    }
+
+    if (event.kind === "runnerPlacement") {
+      snapshot.runners = { ...event.runners };
+      timeline.push(
+        stateChangeEntry(event, index, team, before, copySnapshot(snapshot))
+      );
       continue;
     }
 

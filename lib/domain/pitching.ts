@@ -91,17 +91,29 @@ export function getPitcherStats(
   let currentPitcherId = startingPitcherId;
   const responsiblePitcherByRunnerId = new Map<string, string | null>();
 
+  const takeTheMound = (pitcherId: string) => {
+    currentPitcherId = pitcherId;
+    if (!lines.has(pitcherId)) {
+      lines.set(pitcherId, emptyPitcherStats(pitcherId, "reliever"));
+    }
+  };
+
   for (const entry of timeline) {
     if (!entry.applied) continue;
+    if (entry.event.kind === "positionChange") {
+      const newPitcher =
+        entry.event.team === fieldingTeam
+          ? entry.event.changes.find((change) => change.position === "pitcher")
+          : undefined;
+      if (newPitcher) takeTheMound(newPitcher.playerId);
+      continue;
+    }
     if (entry.event.kind === "substitution") {
-      if (entry.event.team === fieldingTeam && entry.event.role === "pitcher") {
-        currentPitcherId = entry.event.inPlayerId;
-        if (!lines.has(currentPitcherId)) {
-          lines.set(
-            currentPitcherId,
-            emptyPitcherStats(currentPitcherId, "reliever")
-          );
-        }
+      if (
+        entry.event.team === fieldingTeam &&
+        (entry.event.role === "pitcher" || entry.event.position === "pitcher")
+      ) {
+        takeTheMound(entry.event.inPlayerId);
       } else if (
         entry.event.team === battingTeam &&
         entry.event.role === "pinchRunner" &&
@@ -120,7 +132,11 @@ export function getPitcherStats(
       }
       continue;
     }
-    if (entry.event.kind === "gameControl" || entry.event.kind === "note") {
+    if (
+      entry.event.kind === "gameControl" ||
+      entry.event.kind === "note" ||
+      entry.event.kind === "runnerPlacement"
+    ) {
       continue;
     }
     if (entry.team !== battingTeam) continue;

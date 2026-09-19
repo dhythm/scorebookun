@@ -4,6 +4,7 @@ import { and, eq, sql } from "drizzle-orm";
 
 import type { Database } from "@/lib/db/client";
 import {
+  eventPositionChanges,
   eventRunnerMovements,
   gameEvents,
   gamePlayers,
@@ -35,7 +36,7 @@ async function replaceChildRows(
   rows: GameRows
 ): Promise<void> {
   const gameId = rows.game.id;
-  // Deleting events also deletes their runner movements.
+  // Deleting events also deletes their runner movements and position changes.
   await transaction.delete(gameEvents).where(eq(gameEvents.gameId, gameId));
   await transaction.delete(gamePlayers).where(eq(gamePlayers.gameId, gameId));
   await transaction.delete(gameTeams).where(eq(gameTeams.gameId, gameId));
@@ -49,6 +50,9 @@ async function replaceChildRows(
   }
   if (rows.movements.length > 0) {
     await transaction.insert(eventRunnerMovements).values(rows.movements);
+  }
+  if (rows.positionChanges.length > 0) {
+    await transaction.insert(eventPositionChanges).values(rows.positionChanges);
   }
 }
 
@@ -84,17 +88,29 @@ async function readGame(
 ): Promise<(VersionedGame & { lastMutationId: string | null }) | null> {
   const [game] = await db.select().from(games).where(eq(games.id, id));
   if (!game) return null;
-  const [teams, players, events, movements] = await Promise.all([
-    db.select().from(gameTeams).where(eq(gameTeams.gameId, id)),
-    db.select().from(gamePlayers).where(eq(gamePlayers.gameId, id)),
-    db.select().from(gameEvents).where(eq(gameEvents.gameId, id)),
-    db
-      .select()
-      .from(eventRunnerMovements)
-      .where(eq(eventRunnerMovements.gameId, id)),
-  ]);
+  const [teams, players, events, movements, positionChanges] =
+    await Promise.all([
+      db.select().from(gameTeams).where(eq(gameTeams.gameId, id)),
+      db.select().from(gamePlayers).where(eq(gamePlayers.gameId, id)),
+      db.select().from(gameEvents).where(eq(gameEvents.gameId, id)),
+      db
+        .select()
+        .from(eventRunnerMovements)
+        .where(eq(eventRunnerMovements.gameId, id)),
+      db
+        .select()
+        .from(eventPositionChanges)
+        .where(eq(eventPositionChanges.gameId, id)),
+    ]);
   return {
-    game: fromGameRows({ game, teams, players, events, movements }),
+    game: fromGameRows({
+      game,
+      teams,
+      players,
+      events,
+      movements,
+      positionChanges,
+    }),
     version: game.version,
     lastMutationId: game.lastMutationId,
   };

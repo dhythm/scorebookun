@@ -17,6 +17,7 @@ const snapshot: Snapshot = {
   runners: { first: null, second: null, third: null },
   activeLineup: { away: ["away-batter"], home: ["home-batter"] },
   activePitcherId: { away: null, home: null },
+  fieldingPositions: { away: {}, home: {} },
   currentBatterIndex: { away: 0, home: 0 },
   score: { away: 0, home: 0 },
   gameStatus: "live",
@@ -523,5 +524,65 @@ describe("getStartingPitcherStats", () => {
       expect.objectContaining({ pitcherId: "starter", runsAllowed: 0 }),
       expect.objectContaining({ pitcherId: "reliever", runsAllowed: 1 }),
     ]);
+  });
+});
+
+describe("getPitcherStats with position changes", () => {
+  it("credits a fielder who takes the mound through a position change", () => {
+    const positionChange: TimelineEntry = {
+      ...entry("unused", "away", "strikeout"),
+      event: {
+        id: "swap",
+        kind: "positionChange",
+        team: "home",
+        changes: [
+          { playerId: "home-short", position: "pitcher" },
+          { playerId: "home-starter", position: "short" },
+        ],
+      },
+      team: "home",
+      outsAfter: 0,
+      outsRecorded: 0,
+    };
+
+    const lines = getPitcherStats(
+      [
+        entry("k1", "away", "strikeout", 1),
+        positionChange,
+        entry("k2", "away", "strikeout", 1),
+        entry("k3", "away", "strikeout", 1),
+      ],
+      "home",
+      "home-starter"
+    );
+
+    expect(lines).toMatchObject([
+      { pitcherId: "home-starter", role: "starter", outs: 1, strikeouts: 1 },
+      { pitcherId: "home-short", role: "reliever", outs: 2, strikeouts: 2 },
+    ]);
+  });
+
+  it("credits a substitute who enters the game as the pitcher", () => {
+    const substitution: TimelineEntry = {
+      ...entry("unused", "away", "strikeout"),
+      event: {
+        id: "sub",
+        kind: "substitution",
+        team: "home",
+        inPlayerId: "home-bench",
+        outPlayerId: "home-first",
+        role: "fielder",
+        position: "pitcher",
+      },
+      team: "home",
+    };
+
+    const lines = getPitcherStats(
+      [substitution, entry("k1", "away", "strikeout", 1)],
+      "home",
+      "home-starter"
+    );
+
+    expect(lines[1]).toMatchObject({ pitcherId: "home-bench", outs: 1 });
   });
 });

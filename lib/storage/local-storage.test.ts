@@ -199,6 +199,69 @@ describe("v2 storage envelope", () => {
   });
 });
 
+describe("v2 storage of scoring-completeness events", () => {
+  const events: GameEvent[] = [
+    {
+      id: "placement",
+      kind: "runnerPlacement",
+      runners: { first: "a1", second: null, third: null },
+    },
+    {
+      id: "swap",
+      kind: "positionChange",
+      team: "home",
+      changes: [{ playerId: "h1", position: "pitcher" }],
+    },
+    {
+      id: "sub",
+      kind: "substitution",
+      team: "home",
+      inPlayerId: "h2",
+      outPlayerId: "h1",
+      role: "fielder",
+      position: "left",
+    },
+    {
+      id: "advance",
+      kind: "baseRunning",
+      type: "otherAdvance",
+      movements: [{ playerId: "a1", from: "first", to: "third", isRBI: false }],
+    },
+    {
+      id: "running-out",
+      kind: "baseRunning",
+      type: "otherOut",
+      movements: [{ playerId: "a1", from: "third", to: "out", isRBI: false }],
+    },
+  ];
+
+  it("round-trips every new event shape", () => {
+    const game = persistedGame({ events });
+
+    expect(parseStoredGame(serializeStoredGame(game))).toEqual(game);
+  });
+
+  it.each([
+    ["a placement base that is not a player id", 0, { runners: { first: 1 } }],
+    ["a position change without a change list", 1, { changes: "none" }],
+    [
+      "a position change to an unknown position",
+      1,
+      { changes: [{ playerId: "h1", position: "rover" }] },
+    ],
+    ["a substitution into an unknown position", 2, { position: "rover" }],
+  ])("rejects %s", (_label, index, patch) => {
+    const envelope = createStorageEnvelope(
+      persistedGame({ events })
+    ) as unknown as { game: { events: Array<Record<string, unknown>> } };
+    Object.assign(envelope.game.events[index], patch);
+
+    expect(() => parseStoredGame(JSON.stringify(envelope))).toThrow(
+      "malformed schema version 2 game"
+    );
+  });
+});
+
 describe("game repository writes", () => {
   it("writes the active game before updating history", () => {
     const values = new Map<string, string>();

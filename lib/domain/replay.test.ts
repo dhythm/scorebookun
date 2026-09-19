@@ -95,6 +95,7 @@ describe("replay", () => {
       runners: { first: null, second: null, third: null },
       activeLineup: { away: ["away-1"], home: ["home-1"] },
       activePitcherId: { away: null, home: null },
+      fieldingPositions: { away: {}, home: {} },
       currentBatterIndex: { away: 0, home: 0 },
       score: { away: 0, home: 0 },
       gameStatus: "live",
@@ -934,6 +935,245 @@ describe("replay", () => {
         code: "GAME_ALREADY_FINISHED",
         eventId: "ignored-after-end",
       })
+    );
+  });
+});
+
+function positionedConfig(): GameConfig {
+  const gameConfig = config(7, 3, 3);
+  const positions = ["pitcher", "short", "first"] as const;
+  for (const side of ["away", "home"] as const) {
+    gameConfig.teams[side].players.forEach((player, index) => {
+      player.position = positions[index];
+    });
+    gameConfig.teams[side].benchPlayers = [
+      { id: `${side}-bench`, name: `${side} bench`, order: 4 },
+    ];
+  }
+  return gameConfig;
+}
+
+describe("replay fielding positions", () => {
+  it("starts with the configured fielding positions", () => {
+    const result = replay([], positionedConfig());
+
+    expect(result.snapshot.fieldingPositions.home).toEqual({
+      "home-1": "pitcher",
+      "home-2": "short",
+      "home-3": "first",
+    });
+  });
+
+  it("lets a fielder already in the lineup take the mound", () => {
+    const result = replay(
+      [
+        {
+          id: "swap",
+          kind: "positionChange",
+          team: "home",
+          changes: [
+            { playerId: "home-2", position: "pitcher" },
+            { playerId: "home-1", position: "short" },
+          ],
+        },
+      ],
+      positionedConfig()
+    );
+
+    expect(result.timeline[0].applied).toBe(true);
+    expect(result.snapshot.activePitcherId.home).toBe("home-2");
+    expect(result.snapshot.activeLineup.home).toEqual([
+      "home-1",
+      "home-2",
+      "home-3",
+    ]);
+    expect(result.snapshot.fieldingPositions.home).toMatchObject({
+      "home-1": "short",
+      "home-2": "pitcher",
+    });
+  });
+
+  it("rejects a position change for a player who is not in the game", () => {
+    const result = replay(
+      [
+        {
+          id: "bench-move",
+          kind: "positionChange",
+          team: "home",
+          changes: [{ playerId: "home-bench", position: "left" }],
+        },
+      ],
+      positionedConfig()
+    );
+
+    expect(result.timeline[0].applied).toBe(false);
+    expect(result.violations.map((item) => item.code)).toContain(
+      "POSITION_CHANGE_PLAYER_NOT_ACTIVE"
+    );
+  });
+
+  it("rejects an empty position change", () => {
+    const result = replay(
+      [{ id: "empty", kind: "positionChange", team: "home", changes: [] }],
+      positionedConfig()
+    );
+
+    expect(result.timeline[0].applied).toBe(false);
+  });
+
+  it("records the position an incoming substitute takes", () => {
+    const result = replay(
+      [
+        {
+          ...substitution("sub", "home", "home-bench", "home-3", "fielder"),
+          position: "left",
+        },
+      ],
+      positionedConfig()
+    );
+
+    expect(result.snapshot.fieldingPositions.home["home-bench"]).toBe("left");
+    expect(result.snapshot.fieldingPositions.home["home-3"]).toBeUndefined();
+  });
+
+  it("inherits the outgoing position for a defensive substitute without one", () => {
+    const result = replay(
+      [substitution("sub", "home", "home-bench", "home-3", "fielder")],
+      positionedConfig()
+    );
+
+    expect(result.snapshot.fieldingPositions.home["home-bench"]).toBe("first");
+  });
+
+  it("leaves a pinch hitter without a fielding position", () => {
+    const result = replay(
+      [substitution("ph", "away", "away-bench", "away-1", "pinchHitter")],
+      positionedConfig()
+    );
+
+    expect(
+      result.snapshot.fieldingPositions.away["away-bench"]
+    ).toBeUndefined();
+    // The replaced pitcher no longer pitches, but nobody has taken over yet.
+    expect(result.snapshot.activePitcherId.away).toBe("away-1");
+  });
+
+  it("makes a substitute who enters as pitcher the active pitcher", () => {
+    const result = replay(
+      [
+        {
+          ...substitution("sub", "home", "home-bench", "home-3", "fielder"),
+          position: "pitcher",
+        },
+      ],
+      positionedConfig()
+    );
+
+    expect(result.snapshot.activePitcherId.home).toBe("home-bench");
+  });
+});
+
+describe("replay runner placement", () => {
+  it("places tie-break runners without consuming an at-bat", () => {
+    const result = replay(
+      [
+        {
+          id: "tie-break",
+          kind: "runnerPlacement",
+          runners: { first: "away-3", second: "away-2", third: null },
+        },
+      ],
+      positionedConfig()
+    );
+
+    expect(result.timeline[0].applied).toBe(true);
+    expect(result.snapshot.runners).toEqual({
+      first: "away-3",
+      second: "away-2",
+      third: null,
+    });
+    expect(result.snapshot.currentBatterIndex.away).toBe(0);
+  });
+
+  it("counts a run scored by a placed runner", () => {
+    const result = replay(
+      [
+        {
+          id: "tie-break",
+          kind: "runnerPlacement",
+          runners: { first: null, second: null, third: "away-3" },
+        },
+        atBat(
+          "single",
+          "away-1",
+          [
+            { playerId: "away-3", from: "third", to: "home", isRBI: true },
+            { playerId: "away-1", from: "batter", to: "first", isRBI: false },
+          ],
+          "single"
+        ),
+      ],
+      positionedConfig()
+    );
+
+    expect(result.snapshot.score.away).toBe(1);
+  });
+
+  it("can clear or move runners to correct the bases", () => {
+    const result = replay(
+      [
+        atBat(
+          "double",
+          "away-1",
+          [{ playerId: "away-1", from: "batter", to: "second", isRBI: false }],
+          "double"
+        ),
+        {
+          id: "send-back",
+          kind: "runnerPlacement",
+          runners: { first: "away-1", second: null, third: null },
+        },
+      ],
+      positionedConfig()
+    );
+
+    expect(result.snapshot.runners.first).toBe("away-1");
+    expect(result.snapshot.runners.second).toBeNull();
+  });
+
+  it("rejects a placed runner who is not in the offensive lineup", () => {
+    const result = replay(
+      [
+        {
+          id: "wrong-team",
+          kind: "runnerPlacement",
+          runners: { first: "home-1", second: null, third: null },
+        },
+      ],
+      positionedConfig()
+    );
+
+    expect(result.timeline[0].applied).toBe(false);
+    expect(result.violations.map((item) => item.code)).toContain(
+      "PLAYER_NOT_ON_OFFENSE"
+    );
+  });
+
+  it("rejects placing the same runner on two bases", () => {
+    const result = replay(
+      [
+        {
+          id: "twice",
+          kind: "runnerPlacement",
+          runners: { first: "away-2", second: "away-2", third: null },
+        },
+      ],
+      positionedConfig()
+    );
+
+    expect(result.timeline[0].applied).toBe(false);
+    expect(result.violations.map((item) => item.code)).toContain(
+      "DUPLICATE_RUNNER_MOVEMENT"
     );
   });
 });

@@ -13,6 +13,7 @@ const snapshot: Snapshot = {
   runners: { first: null, second: null, third: null },
   activeLineup: { away: ["player"], home: ["opponent"] },
   activePitcherId: { away: null, home: null },
+  fieldingPositions: { away: {}, home: {} },
   currentBatterIndex: { away: 0, home: 0 },
   score: { away: 0, home: 0 },
   gameStatus: "live",

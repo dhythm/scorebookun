@@ -10,6 +10,7 @@ import type {
   GameNoteEvent,
   RunnerDestination,
   RunnerMovement,
+  RunnerPlacementEvent,
   SubstitutionEvent,
 } from "./types";
 import { normalizeAtBatResultFromMovements } from "./rules";
@@ -145,6 +146,8 @@ export function formatBaseRunningNotation(event: BaseRunningEvent): string {
       passedBall: "PB",
       pickOff: "牽制死",
       balk: "ボーク",
+      otherAdvance: "進塁",
+      otherOut: "走塁死",
     };
     return fallback[event.type];
   }
@@ -169,6 +172,10 @@ export function formatBaseRunningNotation(event: BaseRunningEvent): string {
       return movements.every((movement) => movement.to === "out")
         ? "ボーク死"
         : `ボーク·${movementList}`;
+    case "otherAdvance":
+      return `進塁·${movementList}`;
+    case "otherOut":
+      return `走塁死·${movementList}`;
   }
 }
 
@@ -180,11 +187,26 @@ export function formatEventNotation(event: GameEvent): string {
       return formatBaseRunningNotation(event);
     case "substitution":
       return formatSubstitutionNotation(event);
+    case "positionChange":
+      return "守備位置変更";
+    case "runnerPlacement":
+      return formatRunnerPlacementNotation(event);
     case "note":
       return formatGameNoteNotation(event);
     case "gameControl":
       return formatGameControlNotation(event);
   }
+}
+
+export function formatRunnerPlacementNotation(
+  event: Pick<RunnerPlacementEvent, "runners">
+): string {
+  const bases = (["first", "second", "third"] as const)
+    .filter((base) => event.runners[base] !== null)
+    .map((base) => BASE_LABEL[base]);
+  return bases.length > 0
+    ? `走者配置（${bases.join("・")}塁）`
+    : "走者なしに変更";
 }
 
 export function formatGameNoteNotation(

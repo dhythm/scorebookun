@@ -71,6 +71,43 @@ const fullGame: SharedGame = {
       role: "pinchHitter",
     },
     { id: "e5", kind: "note", text: "rain delay" },
+    {
+      id: "e7",
+      kind: "substitution",
+      team: "away",
+      inPlayerId: "a10",
+      outPlayerId: "a2",
+      role: "fielder",
+      position: "left",
+    },
+    {
+      id: "e8",
+      kind: "positionChange",
+      team: "away",
+      changes: [
+        { playerId: "a10", position: "pitcher" },
+        { playerId: "a1", position: "left" },
+      ],
+    },
+    {
+      id: "e9",
+      kind: "runnerPlacement",
+      runners: { first: "a1", second: null, third: "a10" },
+    },
+    {
+      id: "e10",
+      kind: "baseRunning",
+      type: "otherAdvance",
+      movements: [
+        { playerId: "a1", from: "first", to: "second", isRBI: false },
+      ],
+    },
+    {
+      id: "e11",
+      kind: "baseRunning",
+      type: "otherOut",
+      movements: [{ playerId: "a1", from: "second", to: "out", isRBI: false }],
+    },
     { id: "e6", kind: "gameControl", action: "endGame", reason: "rain" },
   ],
   deletedEvents: [
@@ -108,6 +145,7 @@ describe("game rows", () => {
       players: [...rows.players].reverse(),
       events: [...rows.events].reverse(),
       movements: [...rows.movements].reverse(),
+      positionChanges: [...rows.positionChanges].reverse(),
     };
 
     expect(fromGameRows(shuffled)).toEqual(fullGame);

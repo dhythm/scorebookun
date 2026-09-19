@@ -38,7 +38,16 @@ export type AtBatResult =
   | "uncaughtThirdStrike";
 
 export type BaseRunningType =
-  "steal" | "caughtStealing" | "wildPitch" | "passedBall" | "pickOff" | "balk";
+  | "steal"
+  | "caughtStealing"
+  | "wildPitch"
+  | "passedBall"
+  | "pickOff"
+  | "balk"
+  /** Advance on a throw, a fielding error, or any play not listed above. */
+  | "otherAdvance"
+  /** Runner put out between at-bats: overrun, interference, appeal, etc. */
+  | "otherOut";
 
 export interface Player {
   id: string;
@@ -126,6 +135,34 @@ export interface SubstitutionEvent {
   inPlayerId: string;
   outPlayerId: string;
   role: SubstitutionRole;
+  /**
+   * Position the incoming player takes. Omitted for legacy events; a
+   * defensive substitute then inherits the outgoing player's position.
+   */
+  position?: FieldingPosition;
+}
+
+export interface PositionChange {
+  playerId: string;
+  position: FieldingPosition;
+}
+
+/** Players already in the game trade fielding positions. */
+export interface PositionChangeEvent {
+  id: string;
+  kind: "positionChange";
+  team: TeamSide;
+  changes: PositionChange[];
+}
+
+/**
+ * Sets the bases outright, without a play: tie-break runners at the start of
+ * a half-inning, or an umpire ruling that sends runners elsewhere.
+ */
+export interface RunnerPlacementEvent {
+  id: string;
+  kind: "runnerPlacement";
+  runners: Runners;
 }
 
 export interface GameControlEvent {
@@ -145,6 +182,8 @@ export type GameEvent =
   | AtBatEvent
   | BaseRunningEvent
   | SubstitutionEvent
+  | PositionChangeEvent
+  | RunnerPlacementEvent
   | GameControlEvent
   | GameNoteEvent;
 
@@ -165,6 +204,8 @@ export interface Snapshot {
   activeLineup: Record<TeamSide, string[]>;
   /** Current pitcher, independent from the batting order for DH games. */
   activePitcherId: Record<TeamSide, string | null>;
+  /** Current fielding position of each player in the game. */
+  fieldingPositions: Record<TeamSide, Record<string, FieldingPosition>>;
   currentBatterIndex: Record<TeamSide, number>;
   score: Score;
   gameStatus: "live" | "finished";
@@ -197,7 +238,9 @@ type ViolationCode =
   | "SUBSTITUTION_PLAYER_NOT_ON_TEAM"
   | "SUBSTITUTION_OUT_PLAYER_NOT_ACTIVE"
   | "SUBSTITUTION_IN_PLAYER_ALREADY_ACTIVE"
-  | "SUBSTITUTION_RUNNER_NOT_FOUND";
+  | "SUBSTITUTION_RUNNER_NOT_FOUND"
+  | "EMPTY_POSITION_CHANGE"
+  | "POSITION_CHANGE_PLAYER_NOT_ACTIVE";
 
 export interface Violation {
   code: ViolationCode;

@@ -37,6 +37,8 @@ export const eventKind = pgEnum("event_kind", [
   "substitution",
   "gameControl",
   "note",
+  "positionChange",
+  "runnerPlacement",
 ]);
 export const atBatResult = pgEnum("at_bat_result", [
   "single",
@@ -73,6 +75,8 @@ export const baseRunningType = pgEnum("base_running_type", [
   "passedBall",
   "pickOff",
   "balk",
+  "otherAdvance",
+  "otherOut",
 ]);
 export const substitutionRole = pgEnum("substitution_role", [
   "pinchHitter",
@@ -198,6 +202,16 @@ export const gameEvents = pgTable(
     inPlayerId: text("in_player_id"),
     outPlayerId: text("out_player_id"),
     substitutionRole: substitutionRole("substitution_role"),
+    /** Position the incoming substitute takes. */
+    substitutionPosition: fieldingPosition("substitution_position"),
+
+    /** Team whose fielders trade positions; the moves are child rows. */
+    positionChangeSide: teamSide("position_change_side"),
+
+    /** Bases as set outright by a runner placement. */
+    placedFirstId: text("placed_first_id"),
+    placedSecondId: text("placed_second_id"),
+    placedThirdId: text("placed_third_id"),
 
     controlAction: gameControlAction("control_action"),
     controlReason: text("control_reason"),
@@ -250,6 +264,25 @@ export const eventRunnerMovements = pgTable(
     primaryKey({ columns: [table.gameId, table.eventId, table.sequence] }),
     foreignKey({
       name: "event_runner_movements_event",
+      columns: [table.gameId, table.eventId],
+      foreignColumns: [gameEvents.gameId, gameEvents.id],
+    }).onDelete("cascade"),
+  ]
+);
+
+export const eventPositionChanges = pgTable(
+  "event_position_changes",
+  {
+    gameId: text("game_id").notNull(),
+    eventId: text("event_id").notNull(),
+    sequence: integer("sequence").notNull(),
+    playerId: text("player_id").notNull(),
+    position: fieldingPosition("position").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.gameId, table.eventId, table.sequence] }),
+    foreignKey({
+      name: "event_position_changes_event",
       columns: [table.gameId, table.eventId],
       foreignColumns: [gameEvents.gameId, gameEvents.id],
     }).onDelete("cascade"),

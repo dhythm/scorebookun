@@ -1,4 +1,5 @@
 import type {
+  eventPositionChanges,
   eventRunnerMovements,
   gameEvents,
   gamePlayers,
@@ -8,6 +9,7 @@ import type {
 import type {
   GameEvent,
   Player,
+  PositionChange,
   RunnerMovement,
   Team,
   TeamSide,
@@ -22,6 +24,7 @@ type TeamRow = typeof gameTeams.$inferSelect;
 type PlayerRow = typeof gamePlayers.$inferSelect;
 type EventRow = typeof gameEvents.$inferSelect;
 type MovementRow = typeof eventRunnerMovements.$inferSelect;
+type PositionChangeRow = typeof eventPositionChanges.$inferSelect;
 
 export type GameRows = {
   game: GameRow;
@@ -29,6 +32,7 @@ export type GameRows = {
   players: PlayerRow[];
   events: EventRow[];
   movements: MovementRow[];
+  positionChanges: PositionChangeRow[];
 };
 
 const TEAM_SIDES: readonly TeamSide[] = ["away", "home"];
@@ -55,6 +59,11 @@ const EMPTY_EVENT_COLUMNS = {
   inPlayerId: null,
   outPlayerId: null,
   substitutionRole: null,
+  substitutionPosition: null,
+  positionChangeSide: null,
+  placedFirstId: null,
+  placedSecondId: null,
+  placedThirdId: null,
   controlAction: null,
   controlReason: null,
   noteText: null,
@@ -83,6 +92,15 @@ function eventColumns(event: GameEvent): Partial<EventRow> {
         inPlayerId: event.inPlayerId,
         outPlayerId: event.outPlayerId,
         substitutionRole: event.role,
+        substitutionPosition: event.position ?? null,
+      };
+    case "positionChange":
+      return { positionChangeSide: event.team };
+    case "runnerPlacement":
+      return {
+        placedFirstId: event.runners.first,
+        placedSecondId: event.runners.second,
+        placedThirdId: event.runners.third,
       };
     case "gameControl":
       return {
@@ -131,6 +149,7 @@ export function toGameRows(game: SharedGame): GameRows {
 
   const events: EventRow[] = [];
   const movements: MovementRow[] = [];
+  const positionChanges: PositionChangeRow[] = [];
   function addEvent(
     event: GameEvent,
     position: Pick<EventRow, "state" | "sequence" | "restoreIndex">
@@ -143,6 +162,17 @@ export function toGameRows(game: SharedGame): GameRows {
       ...EMPTY_EVENT_COLUMNS,
       ...eventColumns(event),
     });
+    if (event.kind === "positionChange") {
+      event.changes.forEach((change, sequence) =>
+        positionChanges.push({
+          gameId,
+          eventId: event.id,
+          sequence,
+          playerId: change.playerId,
+          position: change.position,
+        })
+      );
+    }
     if (event.kind !== "atBat" && event.kind !== "baseRunning") return;
     event.movements.forEach((movement, sequence) =>
       movements.push({
@@ -176,13 +206,18 @@ export function toGameRows(game: SharedGame): GameRows {
     players,
     events,
     movements,
+    positionChanges,
   };
 }
 
 const bySequence = (left: { sequence: number }, right: { sequence: number }) =>
   left.sequence - right.sequence;
 
-function toEvent(row: EventRow, movements: RunnerMovement[]): GameEvent {
+function toEvent(
+  row: EventRow,
+  movements: RunnerMovement[],
+  changes: PositionChange[]
+): GameEvent {
   switch (row.kind) {
     case "atBat":
       return definedOnly({
@@ -210,13 +245,31 @@ function toEvent(row: EventRow, movements: RunnerMovement[]): GameEvent {
         rbiCreditBatterId: row.rbiCreditBatterId ?? undefined,
       });
     case "substitution":
-      return {
+      return definedOnly({
         id: row.id,
         kind: row.kind,
         team: row.substitutionSide!,
         inPlayerId: row.inPlayerId!,
         outPlayerId: row.outPlayerId!,
         role: row.substitutionRole!,
+        position: row.substitutionPosition ?? undefined,
+      });
+    case "positionChange":
+      return {
+        id: row.id,
+        kind: row.kind,
+        team: row.positionChangeSide!,
+        changes,
+      };
+    case "runnerPlacement":
+      return {
+        id: row.id,
+        kind: row.kind,
+        runners: {
+          first: row.placedFirstId,
+          second: row.placedSecondId,
+          third: row.placedThirdId,
+        },
       };
     case "gameControl":
       return definedOnly({
@@ -246,6 +299,19 @@ export function fromGameRows(rows: GameRows): SharedGame {
     );
     movementsByEvent.set(row.eventId, movements);
   }
+
+  const changesByEvent = new Map<string, PositionChange[]>();
+  for (const row of [...rows.positionChanges].sort(bySequence)) {
+    const changes = changesByEvent.get(row.eventId) ?? [];
+    changes.push({ playerId: row.playerId, position: row.position });
+    changesByEvent.set(row.eventId, changes);
+  }
+  const eventOf = (row: EventRow) =>
+    toEvent(
+      row,
+      movementsByEvent.get(row.id) ?? [],
+      changesByEvent.get(row.id) ?? []
+    );
 
   function playersOf(side: TeamSide, rosterRole: PlayerRow["rosterRole"]) {
     return rows.players
@@ -277,7 +343,7 @@ export function fromGameRows(rows: GameRows): SharedGame {
   const eventsIn = (state: EventRow["state"]) =>
     rows.events.filter((row) => row.state === state).sort(bySequence);
   const deletedEvents = eventsIn("deleted").map((row) => ({
-    event: toEvent(row, movementsByEvent.get(row.id) ?? []),
+    event: eventOf(row),
     index: row.restoreIndex!,
   }));
 
@@ -289,9 +355,7 @@ export function fromGameRows(rows: GameRows): SharedGame {
       regulationInnings: rows.game.regulationInnings,
       teams: { away: teamOf("away"), home: teamOf("home") },
     },
-    events: eventsIn("active").map((row) =>
-      toEvent(row, movementsByEvent.get(row.id) ?? [])
-    ),
+    events: eventsIn("active").map(eventOf),
     deletedEvents: deletedEvents.length > 0 ? deletedEvents : undefined,
   });
 }

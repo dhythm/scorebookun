@@ -166,6 +166,48 @@ describe("game store", () => {
     ).resolves.toHaveLength(movementCount);
   });
 
+  it("stores position changes, runner placements, and substitute positions", async () => {
+    const created = await createGame(database.db, { date, config });
+    const events: SharedGame["events"] = [
+      {
+        id: "placement",
+        kind: "runnerPlacement",
+        runners: { first: "a1", second: null, third: null },
+      },
+      {
+        id: "swap",
+        kind: "positionChange",
+        team: "home",
+        changes: [{ playerId: "h1", position: "pitcher" }],
+      },
+      {
+        id: "advance",
+        kind: "baseRunning",
+        type: "otherAdvance",
+        movements: [
+          { playerId: "a1", from: "first", to: "second", isRBI: false },
+        ],
+      },
+    ];
+
+    await saveGame(database.db, {
+      id: created.id,
+      baseVersion: 1,
+      mutationId: "mutation-1",
+      game: { ...created.game, events },
+    });
+    // Saving twice proves the child rows are replaced, not duplicated.
+    await saveGame(database.db, {
+      id: created.id,
+      baseVersion: 2,
+      mutationId: "mutation-2",
+      game: { ...created.game, events },
+    });
+
+    const found = await findGame(database.db, created.id);
+    expect(found?.game.events).toEqual(events);
+  });
+
   it("replaces rows instead of accumulating them when plays are removed", async () => {
     const created = await createGame(database.db, { date, config });
     const note = { id: "note", kind: "note" as const, text: "rain delay" };
