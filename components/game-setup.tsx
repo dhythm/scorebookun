@@ -37,6 +37,11 @@ import {
   X,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import {
+  MAX_DELETE_KEY_LENGTH,
+  MIN_DELETE_KEY_LENGTH,
+  parseDeleteKey,
+} from "@/lib/sync/delete-key";
 import { useId, useState } from "react";
 import { toast } from "sonner";
 
@@ -523,7 +528,11 @@ export function GameSetup() {
   const inningsValid =
     Number.isInteger(totalInnings) && totalInnings >= 1 && totalInnings <= 20;
 
+  const [deleteKeyInput, setDeleteKeyInput] = useState("");
+  const deleteKey = parseDeleteKey(deleteKeyInput);
+
   const canStartGame =
+    deleteKey.ok &&
     awayTeam.name.trim() !== "" &&
     homeTeam.name.trim() !== "" &&
     isTeamRosterValid(awayTeam) &&
@@ -531,15 +540,19 @@ export function GameSetup() {
     inningsValid;
 
   const startGame = async () => {
+    if (!deleteKey.ok) return;
     setIsCreating(true);
     try {
-      const id = await createGame({
-        date: new Date().toISOString(),
-        config: {
-          regulationInnings: totalInnings,
-          teams: { away: awayTeam, home: homeTeam },
+      const id = await createGame(
+        {
+          date: new Date().toISOString(),
+          config: {
+            regulationInnings: totalInnings,
+            teams: { away: awayTeam, home: homeTeam },
+          },
         },
-      });
+        ...(deleteKey.key ? [deleteKey.key] : [])
+      );
       if (!id) {
         toast.error("試合を作成できませんでした。通信環境を確認してください");
         return;
@@ -658,6 +671,38 @@ export function GameSetup() {
             onTeamChange={setHomeTeam}
           />
         </div>
+
+        <Card className="gap-3 border-border py-4">
+          <CardHeader className="px-4 py-0">
+            <CardTitle className="text-base">
+              <label htmlFor="delete-key">削除キー（任意）</label>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1.5 px-4">
+            <Input
+              id="delete-key"
+              type="text"
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              maxLength={MAX_DELETE_KEY_LENGTH}
+              value={deleteKeyInput}
+              onChange={(event) => setDeleteKeyInput(event.target.value)}
+              aria-describedby="delete-key-help"
+              aria-invalid={!deleteKey.ok}
+              className="h-11 text-base"
+            />
+            {!deleteKey.ok && (
+              <p className="text-xs text-destructive">
+                {MIN_DELETE_KEY_LENGTH}〜{MAX_DELETE_KEY_LENGTH}
+                文字で入力してください。
+              </p>
+            )}
+            <p id="delete-key-help" className="text-xs text-muted-foreground">
+              設定すると、このキーを知っている人だけが試合をサーバーから削除できます。あとから設定・変更・確認はできません。未設定の試合は削除できません。
+            </p>
+          </CardContent>
+        </Card>
         <AlphaDisclaimer />
       </main>
 

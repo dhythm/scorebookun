@@ -12,6 +12,7 @@ import {
 } from "react";
 import {
   EditingConflictAlert,
+  GameDeletedAlert,
   StorageFailureAlert,
 } from "@/components/reliability-alerts";
 import type { AppGame, GameAction } from "./app-state/types";
@@ -27,7 +28,11 @@ import {
   type PersistedGameV2,
 } from "./storage/local-storage";
 import { createBrowserSyncMetaStore } from "./storage/sync-meta";
-import { createGameApi, type GameApi } from "./sync/game-api";
+import {
+  createGameApi,
+  type DeleteGameResult,
+  type GameApi,
+} from "./sync/game-api";
 import { registerGame } from "./sync/register-game";
 import { toSharedGame, type SharedGame } from "./sync/shared-game";
 import {
@@ -53,8 +58,13 @@ interface GameContextValue {
   storageError: boolean;
   dispatch: (action: GameAction) => boolean;
   retrySave: () => void;
-  /** Registers a new shared game on the server; resolves to its id. */
-  createGame: (newGame: NewGame) => Promise<string | null>;
+  /**
+   * Registers a new shared game on the server; resolves to its id. Whoever
+   * knows the optional delete key can delete the game later.
+   */
+  createGame: (newGame: NewGame, deleteKey?: string) => Promise<string | null>;
+  /** Deletes the game for everyone, then drops this device's copy. */
+  deleteGame: (gameId: string, deleteKey: string) => Promise<DeleteGameResult>;
   /** Registers archived games on the server; resolves to how many succeeded. */
   importGames: (games: readonly PersistedGameV2[]) => Promise<number>;
   loadGame: (gameId: string) => Promise<LoadGameResult>;
@@ -113,6 +123,7 @@ export function GameProvider({
   const storageConflict = syncState?.status === "conflict";
   const unsent = syncState?.status === "unsent";
   const storageError = unsent || deviceSaveFailed;
+  const gameMissing = syncState?.status === "missing";
 
   useEffect(() => {
     setStorageReady(true);
@@ -230,18 +241,19 @@ export function GameProvider({
   }, [game]);
 
   const register = useCallback(
-    (newGame: NewGame) =>
+    (newGame: NewGame, deleteKey?: string) =>
       registerGame(
         api,
         { id: "", status: "live", events: [], ...newGame },
-        generateId
+        generateId,
+        deleteKey
       ),
     [api]
   );
 
   const createGame = useCallback<GameContextValue["createGame"]>(
-    async (newGame) => {
-      const registered = await register(newGame);
+    async (newGame, deleteKey) => {
+      const registered = await register(newGame, deleteKey);
       if (!registered) return null;
       reducerDispatch({ type: "LOAD_GAME", game: registered.game });
       startSync(registered.game.id, registered.version);
@@ -298,6 +310,25 @@ export function GameProvider({
     stopSync();
     reducerDispatch({ type: "RESET_GAME" });
   }, [stopSync]);
+
+  const deleteGame = useCallback<GameContextValue["deleteGame"]>(
+    async (gameId, deleteKey) => {
+      const result = await api.delete(gameId, deleteKey);
+      // Already gone from the server is as good as deleted for this device.
+      if (result.status !== "deleted" && result.status !== "notFound") {
+        return result;
+      }
+      try {
+        createBrowserGameRepository().remove(gameId);
+        createBrowserSyncMetaStore().remove(gameId);
+      } catch {
+        // The server copy is gone; a leftover device copy is harmless.
+      }
+      if (syncRef.current?.gameId === gameId) resetGame();
+      return result;
+    },
+    [api, resetGame]
+  );
 
   const reloadConflictingGame = useCallback(() => {
     const accepted = syncRef.current?.sync.acceptRemote();
@@ -363,6 +394,7 @@ export function GameProvider({
         dispatch,
         retrySave,
         createGame,
+        deleteGame,
         importGames,
         loadGame,
         resetGame,
@@ -378,6 +410,7 @@ export function GameProvider({
       {storageConflict && (
         <EditingConflictAlert onReload={reloadConflictingGame} />
       )}
+      {gameMissing && <GameDeletedAlert />}
     </GameContext.Provider>
   );
 }

@@ -109,6 +109,9 @@ export const games = pgTable(
     version: integer("version").notNull().default(1),
     // Lets a client safely retry a save whose response was lost.
     lastMutationId: text("last_mutation_id"),
+    // Salted hash of the key that allows deleting the game. Null when the
+    // game was created without one; such a game cannot be deleted by users.
+    deleteKeyHash: text("delete_key_hash"),
     status: gameStatus("status").notNull(),
     startedAt: timestamp("started_at", { withTimezone: true }).notNull(),
     regulationInnings: integer("regulation_innings").notNull(),

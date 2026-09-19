@@ -303,4 +303,18 @@ describe("createGameSync", () => {
     expect(save).not.toHaveBeenCalled();
     expect(fetch).not.toHaveBeenCalled();
   });
+  it("stops when a poll finds the game deleted", async () => {
+    const { sync, fetch, save, states } = setup();
+    fetch.mockResolvedValue({ status: "notFound" });
+    sync.start();
+
+    await vi.advanceTimersByTimeAsync(3_000);
+
+    expect(states.at(-1)).toEqual({ status: "missing", baseVersion: 1 });
+    await vi.advanceTimersByTimeAsync(9_000);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    sync.push(gameWith(1));
+    await flush();
+    expect(save).not.toHaveBeenCalled();
+  });
 });

@@ -12,6 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   AlertDialog,
@@ -31,17 +32,37 @@ import {
   type PersistedGameV2,
 } from "@/lib/storage/local-storage";
 import { createBrowserSyncMetaStore } from "@/lib/storage/sync-meta";
+import { MAX_DELETE_KEY_LENGTH, parseDeleteKey } from "@/lib/sync/delete-key";
+import type { DeleteGameResult } from "@/lib/sync/game-api";
 import { downloadJsonFile, exportFileName } from "@/lib/export/download-file";
 import { exportHistoryArchive } from "@/lib/export/history-archive";
 import { parseImportedGames } from "@/lib/export/import-games";
 import { toast } from "sonner";
 
+const DELETE_FAILURE_MESSAGES: Record<
+  Exclude<DeleteGameResult["status"], "deleted" | "notFound">,
+  string
+> = {
+  wrongKey: "削除キーが違います。",
+  noKey: "この試合には削除キーが設定されていないため、削除できません。",
+  unavailable: "削除できませんでした。通信環境を確認してください。",
+  rejected: "削除キーが違います。",
+};
+
 export function GameHistory() {
-  const { game, resetGame, importGames } = useGame();
+  const {
+    game,
+    resetGame,
+    importGames,
+    deleteGame: deleteSharedGame,
+  } = useGame();
   const router = useRouter();
   const [games, setGames] = useState<PersistedGameV2[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
   const [deleteGameId, setDeleteGameId] = useState<string | null>(null);
+  const [deleteKeyInput, setDeleteKeyInput] = useState("");
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Only games known to the server are listed; they reopen by shared URL.
   const refresh = () => {
@@ -68,8 +89,39 @@ export function GameHistory() {
       resetGame();
       router.replace("/");
     }
-    setDeleteGameId(null);
+    closeDeleteDialog();
     refresh();
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteGameId(null);
+    setDeleteKeyInput("");
+    setDeleteError(null);
+  };
+
+  const deleteKey = parseDeleteKey(deleteKeyInput);
+  const enteredDeleteKey = deleteKey.ok ? deleteKey.key : null;
+
+  const handleDeleteFromServer = async () => {
+    if (!deleteGameId || !enteredDeleteKey) return;
+    const isCurrentGame = game?.id === deleteGameId;
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      const result = await deleteSharedGame(deleteGameId, enteredDeleteKey);
+      if (result.status !== "deleted" && result.status !== "notFound") {
+        setDeleteError(DELETE_FAILURE_MESSAGES[result.status]);
+        return;
+      }
+      toast.success("試合をサーバーから削除しました");
+      if (isCurrentGame) router.replace("/");
+      closeDeleteDialog();
+      refresh();
+    } catch {
+      setDeleteError(DELETE_FAILURE_MESSAGES.unavailable);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleExport = () => {
@@ -233,7 +285,7 @@ export function GameHistory() {
       <AlertDialog
         open={deleteGameId !== null}
         onOpenChange={(open) => {
-          if (!open) setDeleteGameId(null);
+          if (!open && !isDeleting) closeDeleteDialog();
         }}
       >
         <AlertDialogContent>
@@ -248,16 +300,58 @@ export function GameHistory() {
               この端末の履歴から外すだけで、共有URLからは引き続き開けます。
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-1.5">
+            <label htmlFor="history-delete-key" className="text-sm font-medium">
+              削除キー
+            </label>
+            <Input
+              id="history-delete-key"
+              type="text"
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+              maxLength={MAX_DELETE_KEY_LENGTH}
+              value={deleteKeyInput}
+              onChange={(event) => {
+                setDeleteKeyInput(event.target.value);
+                setDeleteError(null);
+              }}
+              aria-describedby="history-delete-key-help"
+              className="h-11 text-base"
+            />
+            <p
+              id="history-delete-key-help"
+              className="text-xs text-muted-foreground"
+            >
+              試合の作成時に設定したキーを入力すると、サーバーからも削除できます。全員の画面から試合が消え、元に戻せません。
+            </p>
+            {deleteError && (
+              <p role="alert" className="text-sm text-destructive">
+                {deleteError}
+              </p>
+            )}
+          </div>
           <AlertDialogFooter>
-            <AlertDialogCancel className="min-h-11">
+            <AlertDialogCancel className="min-h-11" disabled={isDeleting}>
               キャンセル
             </AlertDialogCancel>
             <AlertDialogAction
-              className="min-h-11 bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="min-h-11"
+              disabled={isDeleting}
               onClick={handleDelete}
             >
-              削除
+              履歴から外す
             </AlertDialogAction>
+            {/* Not an AlertDialogAction: the dialog stays open on failure. */}
+            <Button
+              type="button"
+              variant="destructive"
+              className="min-h-11"
+              disabled={!enteredDeleteKey || isDeleting}
+              onClick={() => void handleDeleteFromServer()}
+            >
+              {isDeleting ? "削除中…" : "サーバーからも削除"}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

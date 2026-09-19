@@ -68,4 +68,15 @@ describe("registerGame", () => {
       registerGame(api, recorded, () => "mutation-1")
     ).resolves.toBeNull();
   });
+  it("passes the delete key to the server when one is given", async () => {
+    const api = apiWith(async () => ({ status: "saved", version: 2 }));
+
+    await registerGame(api, recorded, () => "mutation-1", "open sesame");
+
+    expect(api.create).toHaveBeenCalledWith({
+      date: recorded.date,
+      config: recorded.config,
+      deleteKey: "open sesame",
+    });
+  });
 });

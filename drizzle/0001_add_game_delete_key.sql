@@ -1,0 +1,1 @@
+ALTER TABLE "games" ADD COLUMN "delete_key_hash" text;

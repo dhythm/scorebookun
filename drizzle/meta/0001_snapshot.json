@@ -1,0 +1,821 @@
+{
+  "id": "420cb921-81fd-47d5-9d13-2326ff4e9820",
+  "prevId": "f9726e9b-2f7f-4e8c-a54a-b54e8d7636e0",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.event_position_changes": {
+      "name": "event_position_changes",
+      "schema": "",
+      "columns": {
+        "game_id": {
+          "name": "game_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "event_id": {
+          "name": "event_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "fielding_position",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "event_position_changes_event": {
+          "name": "event_position_changes_event",
+          "tableFrom": "event_position_changes",
+          "tableTo": "game_events",
+          "columnsFrom": [
+            "game_id",
+            "event_id"
+          ],
+          "columnsTo": [
+            "game_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "event_position_changes_game_id_event_id_sequence_pk": {
+          "name": "event_position_changes_game_id_event_id_sequence_pk",
+          "columns": [
+            "game_id",
+            "event_id",
+            "sequence"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.event_runner_movements": {
+      "name": "event_runner_movements",
+      "schema": "",
+      "columns": {
+        "game_id": {
+          "name": "game_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "event_id": {
+          "name": "event_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "origin": {
+          "name": "origin",
+          "type": "runner_origin",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "destination": {
+          "name": "destination",
+          "type": "runner_destination",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_rbi": {
+          "name": "is_rbi",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "play_order": {
+          "name": "play_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "out_type": {
+          "name": "out_type",
+          "type": "out_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "event_runner_movements_event": {
+          "name": "event_runner_movements_event",
+          "tableFrom": "event_runner_movements",
+          "tableTo": "game_events",
+          "columnsFrom": [
+            "game_id",
+            "event_id"
+          ],
+          "columnsTo": [
+            "game_id",
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "event_runner_movements_game_id_event_id_sequence_pk": {
+          "name": "event_runner_movements_game_id_event_id_sequence_pk",
+          "columns": [
+            "game_id",
+            "event_id",
+            "sequence"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.game_events": {
+      "name": "game_events",
+      "schema": "",
+      "columns": {
+        "game_id": {
+          "name": "game_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "event_state",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "restore_index": {
+          "name": "restore_index",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "event_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "batter_id": {
+          "name": "batter_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "at_bat_result": {
+          "name": "at_bat_result",
+          "type": "at_bat_result",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "batted_ball_position": {
+          "name": "batted_ball_position",
+          "type": "fielding_position",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "batted_ball_type": {
+          "name": "batted_ball_type",
+          "type": "batted_ball_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "batted_ball_depth": {
+          "name": "batted_ball_depth",
+          "type": "batted_ball_depth",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "fielding_sequence": {
+          "name": "fielding_sequence",
+          "type": "fielding_position[]",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "at_bat_note": {
+          "name": "at_bat_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "base_running_type": {
+          "name": "base_running_type",
+          "type": "base_running_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rbi_credit_batter_id": {
+          "name": "rbi_credit_batter_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "substitution_side": {
+          "name": "substitution_side",
+          "type": "team_side",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "in_player_id": {
+          "name": "in_player_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "out_player_id": {
+          "name": "out_player_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "substitution_role": {
+          "name": "substitution_role",
+          "type": "substitution_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "substitution_position": {
+          "name": "substitution_position",
+          "type": "fielding_position",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "position_change_side": {
+          "name": "position_change_side",
+          "type": "team_side",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "placed_first_id": {
+          "name": "placed_first_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "placed_second_id": {
+          "name": "placed_second_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "placed_third_id": {
+          "name": "placed_third_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "control_action": {
+          "name": "control_action",
+          "type": "game_control_action",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "control_reason": {
+          "name": "control_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "note_text": {
+          "name": "note_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "game_events_game_id_games_id_fk": {
+          "name": "game_events_game_id_games_id_fk",
+          "tableFrom": "game_events",
+          "tableTo": "games",
+          "columnsFrom": [
+            "game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "game_events_game_id_id_pk": {
+          "name": "game_events_game_id_id_pk",
+          "columns": [
+            "game_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "game_events_list_position": {
+          "name": "game_events_list_position",
+          "nullsNotDistinct": false,
+          "columns": [
+            "game_id",
+            "state",
+            "sequence"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "game_events_restore_index_matches_state": {
+          "name": "game_events_restore_index_matches_state",
+          "value": "(\"game_events\".\"state\" = 'deleted') = (\"game_events\".\"restore_index\" is not null)"
+        },
+        "game_events_batted_ball_is_complete": {
+          "name": "game_events_batted_ball_is_complete",
+          "value": "(\"game_events\".\"batted_ball_position\" is null) = (\"game_events\".\"batted_ball_type\" is null) and (\"game_events\".\"batted_ball_depth\" is null or \"game_events\".\"batted_ball_type\" is not null)"
+        },
+        "game_events_kind_has_required_columns": {
+          "name": "game_events_kind_has_required_columns",
+          "value": "case \"game_events\".\"kind\"\n        when 'atBat' then \"game_events\".\"batter_id\" is not null and \"game_events\".\"at_bat_result\" is not null\n        when 'baseRunning' then \"game_events\".\"base_running_type\" is not null\n        when 'substitution' then \"game_events\".\"substitution_side\" is not null and \"game_events\".\"in_player_id\" is not null and \"game_events\".\"out_player_id\" is not null and \"game_events\".\"substitution_role\" is not null\n        when 'positionChange' then \"game_events\".\"position_change_side\" is not null\n        when 'runnerPlacement' then true\n        when 'gameControl' then \"game_events\".\"control_action\" is not null\n        when 'note' then \"game_events\".\"note_text\" is not null\n      end"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.game_players": {
+      "name": "game_players",
+      "schema": "",
+      "columns": {
+        "game_id": {
+          "name": "game_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "side": {
+          "name": "side",
+          "type": "team_side",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "roster_role": {
+          "name": "roster_role",
+          "type": "roster_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sequence": {
+          "name": "sequence",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "batting_order": {
+          "name": "batting_order",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "fielding_position",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "game_players_game_id_games_id_fk": {
+          "name": "game_players_game_id_games_id_fk",
+          "tableFrom": "game_players",
+          "tableTo": "games",
+          "columnsFrom": [
+            "game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "game_players_game_id_id_pk": {
+          "name": "game_players_game_id_id_pk",
+          "columns": [
+            "game_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "game_players_list_position": {
+          "name": "game_players_list_position",
+          "nullsNotDistinct": false,
+          "columns": [
+            "game_id",
+            "side",
+            "roster_role",
+            "sequence"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.game_teams": {
+      "name": "game_teams",
+      "schema": "",
+      "columns": {
+        "game_id": {
+          "name": "game_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "side": {
+          "name": "side",
+          "type": "team_side",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "starting_pitcher_id": {
+          "name": "starting_pitcher_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "starting_pitcher_name": {
+          "name": "starting_pitcher_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "game_teams_game_id_games_id_fk": {
+          "name": "game_teams_game_id_games_id_fk",
+          "tableFrom": "game_teams",
+          "tableTo": "games",
+          "columnsFrom": [
+            "game_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "game_teams_game_id_side_pk": {
+          "name": "game_teams_game_id_side_pk",
+          "columns": [
+            "game_id",
+            "side"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.games": {
+      "name": "games",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "last_mutation_id": {
+          "name": "last_mutation_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delete_key_hash": {
+          "name": "delete_key_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "game_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "regulation_innings": {
+          "name": "regulation_innings",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "games_regulation_innings_range": {
+          "name": "games_regulation_innings_range",
+          "value": "\"games\".\"regulation_innings\" between 1 and 20"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.at_bat_result": {
+      "name": "at_bat_result",
+      "schema": "public",
+      "values": [
+        "single",
+        "double",
+        "triple",
+        "homerun",
+        "groundOut",
+        "flyOut",
+        "strikeout",
+        "strikeoutSwinging",
+        "strikeoutLooking",
+        "doublePlay",
+        "otherOut",
+        "walk",
+        "hitByPitch",
+        "error",
+        "sacrifice",
+        "sacrificeFly",
+        "fieldersChoice",
+        "interference",
+        "uncaughtThirdStrike"
+      ]
+    },
+    "public.base_running_type": {
+      "name": "base_running_type",
+      "schema": "public",
+      "values": [
+        "steal",
+        "caughtStealing",
+        "wildPitch",
+        "passedBall",
+        "pickOff",
+        "balk",
+        "otherAdvance",
+        "otherOut"
+      ]
+    },
+    "public.batted_ball_depth": {
+      "name": "batted_ball_depth",
+      "schema": "public",
+      "values": [
+        "shallow",
+        "deep"
+      ]
+    },
+    "public.batted_ball_type": {
+      "name": "batted_ball_type",
+      "schema": "public",
+      "values": [
+        "ground",
+        "fly",
+        "liner",
+        "bunt"
+      ]
+    },
+    "public.event_kind": {
+      "name": "event_kind",
+      "schema": "public",
+      "values": [
+        "atBat",
+        "baseRunning",
+        "substitution",
+        "gameControl",
+        "note",
+        "positionChange",
+        "runnerPlacement"
+      ]
+    },
+    "public.event_state": {
+      "name": "event_state",
+      "schema": "public",
+      "values": [
+        "active",
+        "deleted"
+      ]
+    },
+    "public.fielding_position": {
+      "name": "fielding_position",
+      "schema": "public",
+      "values": [
+        "pitcher",
+        "catcher",
+        "first",
+        "second",
+        "third",
+        "short",
+        "left",
+        "center",
+        "right",
+        "dh"
+      ]
+    },
+    "public.game_control_action": {
+      "name": "game_control_action",
+      "schema": "public",
+      "values": [
+        "endGame"
+      ]
+    },
+    "public.game_status": {
+      "name": "game_status",
+      "schema": "public",
+      "values": [
+        "setup",
+        "live",
+        "finished"
+      ]
+    },
+    "public.out_type": {
+      "name": "out_type",
+      "schema": "public",
+      "values": [
+        "force",
+        "tag"
+      ]
+    },
+    "public.roster_role": {
+      "name": "roster_role",
+      "schema": "public",
+      "values": [
+        "lineup",
+        "bench"
+      ]
+    },
+    "public.runner_destination": {
+      "name": "runner_destination",
+      "schema": "public",
+      "values": [
+        "first",
+        "second",
+        "third",
+        "home",
+        "out"
+      ]
+    },
+    "public.runner_origin": {
+      "name": "runner_origin",
+      "schema": "public",
+      "values": [
+        "batter",
+        "first",
+        "second",
+        "third"
+      ]
+    },
+    "public.substitution_role": {
+      "name": "substitution_role",
+      "schema": "public",
+      "values": [
+        "pinchHitter",
+        "pinchRunner",
+        "fielder",
+        "pitcher"
+      ]
+    },
+    "public.team_side": {
+      "name": "team_side",
+      "schema": "public",
+      "values": [
+        "away",
+        "home"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

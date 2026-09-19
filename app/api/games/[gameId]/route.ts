@@ -1,5 +1,6 @@
 import { getDatabase } from "@/lib/db";
 import {
+  handleDeleteGame,
   handleGetGame,
   handleSaveGame,
   unavailable,
@@ -26,6 +27,18 @@ export async function PUT(
   try {
     const [{ db }, { gameId }] = await Promise.all([getDatabase(), params]);
     return await handleSaveGame(db, gameId, request);
+  } catch {
+    return unavailable();
+  }
+}
+
+export async function DELETE(
+  request: Request,
+  { params }: RouteContext
+): Promise<Response> {
+  try {
+    const [{ db }, { gameId }] = await Promise.all([getDatabase(), params]);
+    return await handleDeleteGame(db, gameId, request);
   } catch {
     return unavailable();
   }

@@ -22,10 +22,21 @@ export type SaveGameResult =
   | { status: "unavailable" }
   | { status: "rejected" };
 
+export type DeleteGameResult =
+  | { status: "deleted" }
+  | { status: "wrongKey" }
+  /** The game was created without a delete key. */
+  | { status: "noKey" }
+  | { status: "notFound" }
+  | { status: "unavailable" }
+  | { status: "rejected" };
+
 export type GameApi = {
   create(input: {
     date: string;
     config: GameConfig;
+    /** Whoever knows it may delete the game later. */
+    deleteKey?: string;
   }): Promise<CreateGameResult>;
   fetch(gameId: string, sinceVersion?: number): Promise<FetchGameResult>;
   save(input: {
@@ -34,6 +45,7 @@ export type GameApi = {
     mutationId: string;
     game: SharedGame;
   }): Promise<SaveGameResult>;
+  delete(gameId: string, deleteKey: string): Promise<DeleteGameResult>;
 };
 
 function gameUrl(gameId: string): string {
@@ -134,6 +146,22 @@ export function createGameApi(
           if (response.status !== 200) return null;
           const body = (await response.json()) as Record<string, unknown>;
           return { status: "saved", version: parseVersion(body.version) };
+        }
+      ),
+
+    // The key goes in the body: URLs end up in access logs.
+    delete: (gameId, deleteKey) =>
+      request<DeleteGameResult>(
+        gameUrl(gameId),
+        jsonInit("DELETE", { deleteKey }),
+        async (response) => {
+          if (response.status === 204) return { status: "deleted" };
+          if (response.status === 404) return { status: "notFound" };
+          if (response.status !== 403) return null;
+          const body = (await response.json()) as Record<string, unknown>;
+          return {
+            status: body.error === "delete_key_not_set" ? "noKey" : "wrongKey",
+          };
         }
       ),
   };

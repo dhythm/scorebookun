@@ -138,6 +138,11 @@ export function createGameSync(options: GameSyncOptions): GameSync {
     }
     const result = await api.fetch(gameId, baseVersion);
     if (stopped || halted || saving || isDirty()) return;
+    if (result.status === "notFound") {
+      halted = "missing";
+      emit("missing");
+      return;
+    }
     if (result.status !== "found" || result.version <= baseVersion) return;
 
     baseVersion = result.version;

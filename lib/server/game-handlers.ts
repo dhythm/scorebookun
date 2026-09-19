@@ -1,7 +1,15 @@
 import type { Database } from "@/lib/db/client";
+import { parseDeleteKey } from "@/lib/sync/delete-key";
 import { parseSharedGame, type SharedGame } from "@/lib/sync/shared-game";
 
-import { createGame, findGame, saveGame } from "./game-store";
+import { hashDeleteKey, verifyDeleteKey } from "./delete-key";
+import {
+  createGame,
+  deleteGame,
+  findDeleteKeyHash,
+  findGame,
+  saveGame,
+} from "./game-store";
 
 type Db = Database["db"];
 
@@ -115,11 +123,43 @@ export function handleCreateGame(db: Db, request: Request): Promise<Response> {
       config: body.config,
       events: [],
     });
+    // The key travels beside the game, never inside it: the game is what
+    // every holder of the URL receives.
+    const deleteKey = parseDeleteKey(body.deleteKey);
+    if (!deleteKey.ok) throw new RequestError(400, "invalid_request");
     const created = await createGame(db, {
       date: draft.date,
       config: draft.config,
+      deleteKeyHash: deleteKey.key && (await hashDeleteKey(deleteKey.key)),
     });
     return json(201, created);
+  });
+}
+
+export function handleDeleteGame(
+  db: Db,
+  gameId: string,
+  request: Request
+): Promise<Response> {
+  return respond(async () => {
+    const body = await readJsonBody(request);
+    const deleteKey = parseDeleteKey(body.deleteKey);
+    if (!deleteKey.ok || deleteKey.key === null) {
+      throw new RequestError(400, "invalid_request");
+    }
+
+    const stored = await findDeleteKeyHash(db, gameId);
+    if (stored === undefined) return json(404, { error: "not_found" });
+    if (stored === null) throw new RequestError(403, "delete_key_not_set");
+    if (!(await verifyDeleteKey(deleteKey.key, stored))) {
+      throw new RequestError(403, "delete_key_mismatch");
+    }
+
+    await deleteGame(db, gameId);
+    return new Response(null, {
+      status: 204,
+      headers: { "cache-control": "no-store" },
+    });
   });
 }
 

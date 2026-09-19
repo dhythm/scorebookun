@@ -9,9 +9,14 @@ import type { SharedGame } from "./shared-game";
 export async function registerGame(
   api: Pick<GameApi, "create" | "save">,
   game: SharedGame,
-  createMutationId: () => string
+  createMutationId: () => string,
+  deleteKey?: string
 ): Promise<VersionedGame | null> {
-  const created = await api.create({ date: game.date, config: game.config });
+  const created = await api.create({
+    date: game.date,
+    config: game.config,
+    ...(deleteKey ? { deleteKey } : {}),
+  });
   if (created.status !== "created") return null;
 
   const registered: SharedGame = { ...game, id: created.id };

@@ -57,18 +57,22 @@ async function replaceChildRows(
 }
 
 /** Inserts a game at version 1, replacing any game with the same id. */
-export async function insertGame(db: Db, game: SharedGame): Promise<void> {
+export async function insertGame(
+  db: Db,
+  game: SharedGame,
+  deleteKeyHash: string | null = null
+): Promise<void> {
   const rows = toGameRows(game);
   await db.transaction(async (transaction) => {
     await transaction.delete(games).where(eq(games.id, game.id));
-    await transaction.insert(games).values(rows.game);
+    await transaction.insert(games).values({ ...rows.game, deleteKeyHash });
     await replaceChildRows(transaction, rows);
   });
 }
 
 export async function createGame(
   db: Db,
-  input: { date: string; config: GameConfig }
+  input: { date: string; config: GameConfig; deleteKeyHash?: string | null }
 ): Promise<VersionedGame & { id: string }> {
   const id = generateGameId();
   const game: SharedGame = {
@@ -78,8 +82,29 @@ export async function createGame(
     config: input.config,
     events: [],
   };
-  await insertGame(db, game);
+  await insertGame(db, game, input.deleteKeyHash ?? null);
   return { id, game: fromGameRows(toGameRows(game)), version: 1 };
+}
+
+/** Undefined when the game does not exist; null when it has no delete key. */
+export async function findDeleteKeyHash(
+  db: Db,
+  id: string
+): Promise<string | null | undefined> {
+  const [game] = await db
+    .select({ deleteKeyHash: games.deleteKeyHash })
+    .from(games)
+    .where(eq(games.id, id));
+  return game?.deleteKeyHash;
+}
+
+/** Child rows go with the game through their cascading foreign keys. */
+export async function deleteGame(db: Db, id: string): Promise<boolean> {
+  const deleted = await db
+    .delete(games)
+    .where(eq(games.id, id))
+    .returning({ id: games.id });
+  return deleted.length > 0;
 }
 
 async function readGame(

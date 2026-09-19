@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { GameSetup } from "./game-setup";
 
 const { createGame, push } = vi.hoisted(() => ({
-  createGame: vi.fn(async () => "created-game"),
+  createGame: vi.fn(async (..._args: unknown[]) => "created-game"),
   push: vi.fn(),
 }));
 
@@ -58,5 +58,45 @@ describe("custom regulation innings", () => {
       })
     );
     expect(push).toHaveBeenCalledWith("/games/created-game");
+  });
+});
+
+describe("delete key", () => {
+  async function renderReadyToStart() {
+    const user = userEvent.setup();
+    render(<GameSetup />);
+    await user.click(
+      screen.getByRole("button", { name: "チーム1・チーム2（各9人）を設定" })
+    );
+    const start = screen.getByRole<HTMLButtonElement>("button", {
+      name: "試合を作成して開始",
+    });
+    return { user, start, input: screen.getByLabelText("削除キー（任意）") };
+  }
+
+  it("creates a game without a key when the field is left blank", async () => {
+    const { user, start } = await renderReadyToStart();
+
+    await user.click(start);
+
+    expect(createGame).toHaveBeenCalledWith(expect.anything());
+  });
+
+  it("passes the trimmed key along with the new game", async () => {
+    const { user, start, input } = await renderReadyToStart();
+
+    await user.type(input, " open sesame ");
+    await user.click(start);
+
+    expect(createGame).toHaveBeenCalledWith(expect.anything(), "open sesame");
+  });
+
+  it("does not start with a key that is too short", async () => {
+    const { user, start, input } = await renderReadyToStart();
+
+    await user.type(input, "abc");
+
+    expect(start.disabled).toBe(true);
+    expect(screen.getByText("4〜100文字で入力してください。")).toBeTruthy();
   });
 });

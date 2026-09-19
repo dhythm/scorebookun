@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, DatabaseZap, RefreshCw } from "lucide-react";
+import { AlertTriangle, DatabaseZap, RefreshCw, Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -63,6 +63,25 @@ export function StorageFailureAlert({
         <RefreshCw className="mr-1 h-4 w-4" aria-hidden="true" />
         {unsent ? "今すぐ再送" : "保存を再試行"}
       </Button>
+    </div>
+  );
+}
+
+/** Someone deleted the game on the server; nothing more can be saved to it. */
+export function GameDeletedAlert() {
+  return (
+    <div
+      role="alert"
+      aria-live="assertive"
+      className="fixed inset-x-0 top-0 z-[65] flex flex-col items-center justify-center gap-x-2 border-b border-destructive bg-destructive px-4 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))] text-center text-sm font-semibold text-destructive-foreground shadow-md sm:flex-row"
+    >
+      <span className="flex items-center gap-2">
+        <Trash2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+        この試合は削除されました
+      </span>
+      <span className="font-normal">
+        これ以降の記録は共有されません。この端末の控えは残っています。
+      </span>
     </div>
   );
 }

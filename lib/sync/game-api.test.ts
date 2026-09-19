@@ -85,4 +85,51 @@ describe("createGameApi", () => {
       api.save({ id: "game-1", baseVersion: 1, mutationId: "m", game })
     ).resolves.toEqual({ status: "rejected" });
   });
+  it("sends the delete key beside the new game", async () => {
+    const { api, fetchFn } = apiReturning(
+      Response.json({ id: "game-1", game, version: 1 }, { status: 201 })
+    );
+
+    await api.create({
+      date: game.date,
+      config: game.config,
+      deleteKey: "open sesame",
+    });
+
+    const init = fetchFn.mock.calls[0][1];
+    expect(JSON.parse(String(init?.body))).toEqual({
+      date: game.date,
+      config: game.config,
+      deleteKey: "open sesame",
+    });
+  });
+
+  it("deletes a game, sending the key in the body and not the URL", async () => {
+    const { api, fetchFn } = apiReturning(new Response(null, { status: 204 }));
+
+    await expect(api.delete("game 1", "open sesame")).resolves.toEqual({
+      status: "deleted",
+    });
+    expect(fetchFn).toHaveBeenCalledWith(
+      "/api/games/game%201",
+      expect.objectContaining({
+        method: "DELETE",
+        body: JSON.stringify({ deleteKey: "open sesame" }),
+      })
+    );
+  });
+
+  it.each([
+    [403, { error: "delete_key_mismatch" }, "wrongKey"],
+    [403, { error: "delete_key_not_set" }, "noKey"],
+    [404, { error: "not_found" }, "notFound"],
+    [400, { error: "invalid_request" }, "rejected"],
+    [503, { error: "unavailable" }, "unavailable"],
+  ])("reads a %i %j delete reply as %s", async (status, body, expected) => {
+    const { api } = apiReturning(Response.json(body, { status }));
+
+    await expect(api.delete("game-1", "open sesame")).resolves.toEqual({
+      status: expected,
+    });
+  });
 });

@@ -50,14 +50,19 @@ const recordedOut: GameEvent = {
 };
 
 /** An in-memory stand-in for the server with real optimistic locking. */
-function fakeServer(initial: SharedGame | null = game) {
+function fakeServer(
+  initial: SharedGame | null = game,
+  initialDeleteKey: string | null = null
+) {
   const state = {
     current: initial ? { game: initial, version: 1 } : null,
+    deleteKey: initialDeleteKey,
     online: true,
   };
   const api: GameApi = {
-    create: vi.fn<GameApi["create"]>(async ({ date, config }) => {
+    create: vi.fn<GameApi["create"]>(async ({ date, config, deleteKey }) => {
       if (!state.online) return { status: "unavailable" };
+      state.deleteKey = deleteKey ?? null;
       const created: SharedGame = {
         id: "created-game",
         date,
@@ -87,6 +92,16 @@ function fakeServer(initial: SharedGame | null = game) {
       state.current = { game: input.game, version: input.baseVersion + 1 };
       return { status: "saved", version: state.current.version };
     }),
+    delete: vi.fn<GameApi["delete"]>(async (gameId, deleteKey) => {
+      if (!state.online) return { status: "unavailable" };
+      if (!state.current || state.current.game.id !== gameId) {
+        return { status: "notFound" };
+      }
+      if (state.deleteKey === null) return { status: "noKey" };
+      if (state.deleteKey !== deleteKey) return { status: "wrongKey" };
+      state.current = null;
+      return { status: "deleted" };
+    }),
   };
   return {
     api,
@@ -108,6 +123,7 @@ function Harness() {
     dispatch,
     addEvent,
     createGame,
+    deleteGame,
     loadGame,
     storageConflict,
     storageError,
@@ -139,6 +155,30 @@ function Harness() {
       <button
         type="button"
         onClick={() =>
+          void createGame(
+            { date: game.date, config: game.config },
+            "open sesame"
+          )
+        }
+      >
+        test create with key
+      </button>
+      {["open sesame", "open barley"].map((deleteKey) => (
+        <button
+          key={deleteKey}
+          type="button"
+          onClick={() =>
+            void deleteGame(game.id, deleteKey).then((result) => {
+              document.body.dataset.deleteResult = result.status;
+            })
+          }
+        >
+          {`test delete with ${deleteKey}`}
+        </button>
+      ))}
+      <button
+        type="button"
+        onClick={() =>
           void loadGame(game.id).then((result) => {
             document.body.dataset.loadResult = result;
           })
@@ -164,6 +204,7 @@ describe("GameProvider shared game sync", () => {
   beforeEach(() => {
     window.localStorage.clear();
     delete document.body.dataset.loadResult;
+    delete document.body.dataset.deleteResult;
   });
 
   afterEach(() => {
@@ -317,5 +358,66 @@ describe("GameProvider shared game sync", () => {
       expect(server.state.current?.game.events).toEqual([recordedOut])
     );
     expect(eventCount()).toBe("1");
+  });
+  describe("deleting a game", () => {
+    it("creates a game with a delete key", async () => {
+      const user = userEvent.setup();
+      const server = fakeServer(null);
+      renderProvider(server.api);
+
+      await user.click(screen.getByText("test create with key"));
+
+      await waitFor(() =>
+        expect(screen.getByTestId("game-id").textContent).toBe("created-game")
+      );
+      expect(server.state.deleteKey).toBe("open sesame");
+    });
+
+    it("removes the game from the server and from this device", async () => {
+      const user = userEvent.setup();
+      const server = fakeServer(game, "open sesame");
+      renderProvider(server.api);
+      await user.click(screen.getByText("test load"));
+      await waitFor(() => expect(eventCount()).toBe("0"));
+
+      await user.click(screen.getByText("test delete with open sesame"));
+
+      await waitFor(() =>
+        expect(document.body.dataset.deleteResult).toBe("deleted")
+      );
+      expect(server.state.current).toBeNull();
+      expect(screen.getByTestId("game-id").textContent).toBe("none");
+      expect(createBrowserGameRepository().find(game.id)).toBeNull();
+      expect(createBrowserSyncMetaStore().get(game.id)).toBeNull();
+    });
+
+    it("keeps everything when the key is wrong", async () => {
+      const user = userEvent.setup();
+      const server = fakeServer(game, "open sesame");
+      renderProvider(server.api);
+      await user.click(screen.getByText("test load"));
+      await waitFor(() => expect(eventCount()).toBe("0"));
+
+      await user.click(screen.getByText("test delete with open barley"));
+
+      await waitFor(() =>
+        expect(document.body.dataset.deleteResult).toBe("wrongKey")
+      );
+      expect(server.state.current).not.toBeNull();
+      expect(screen.getByTestId("game-id").textContent).toBe(game.id);
+      expect(createBrowserGameRepository().find(game.id)).not.toBeNull();
+    });
+
+    it("tells a scorer when someone else deleted the game", async () => {
+      const user = userEvent.setup();
+      const server = fakeServer(game, "open sesame");
+      renderProvider(server.api);
+      await user.click(screen.getByText("test load"));
+      await waitFor(() => expect(eventCount()).toBe("0"));
+
+      server.state.current = null;
+
+      expect(await screen.findByText("この試合は削除されました")).toBeTruthy();
+    });
   });
 });
