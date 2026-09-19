@@ -188,13 +188,13 @@ erDiagram
   game_events ||--o{ event_runner_movements : ""
 ```
 
-| テーブル                 | 内容                                                                                                        |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| `games`                  | 試合ID、楽観ロック用の `version` と `last_mutation_id`、状態、開始日時、規定イニング                        |
-| `game_teams`             | 先攻・後攻のチーム名、先発投手                                                                              |
-| `game_players`           | スタメンと控え（`roster_role`）、打順、守備位置、リスト内の並び（`sequence`）                               |
-| `game_events`            | 打席・走塁・交代・試合終了・メモ。`kind` ごとの必須列を CHECK 制約で保証。ゴミ箱は `state = 'deleted'` の行 |
-| `event_runner_movements` | 各プレーでの走者の動き（どこから・どこへ・打点・アウトの種類）                                              |
+| テーブル                 | 内容                                                                                                                |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `games`                  | 試合ID、楽観ロック用の `version` と `last_mutation_id`、状態、開始日時、規定イニング                                |
+| `game_teams`             | 先攻・後攻のチーム名、先発投手                                                                                      |
+| `game_players`           | スタメンと控え（`roster_role`）、打順、守備位置、リスト内の並び（`sequence`）                                       |
+| `game_events`            | 打席・走塁・交代・試合終了・メモ。`kind` ごとの必須列を CHECK 制約で保証。削除済みの記録は `state = 'deleted'` の行 |
+| `event_runner_movements` | 各プレーでの走者の動き（どこから・どこへ・打点・アウトの種類）                                                      |
 
 - 保存するのは「記録されたこと」だけです。得点・イニング・個人成績は従来どおり `lib/domain/replay.ts` がイベントから算出し、DBには持ちません。
 - イベント内の選手IDには外部キーを張っていません。未知の選手IDは保存を拒否せず、アプリが警告として扱う仕様のためです。
@@ -205,16 +205,16 @@ erDiagram
 
 「すでに誰かが作成して記録している試合」を、開始前・試合中・終了後にまたがって用意しています。
 
-| URL                                | 内容                                                                         |
-| ---------------------------------- | ---------------------------------------------------------------------------- |
-| `/games/seed-before-first-pitch`   | 試合開始前。オーダー登録済み（後攻はDH制・控えあり）、プレー未記録           |
-| `/games/seed-live-pitchers-duel`   | 試合中（序盤）。0対0の投手戦                                                 |
-| `/games/seed-live-slugfest`        | 試合中（中盤）。乱打戦。盗塁・失策・暴投・代打・代走・投手交代・メモ・ゴミ箱 |
-| `/games/seed-live-last-chance`     | 試合中（終盤）。最終回裏・同点・2死満塁                                      |
-| `/games/seed-live-extra-innings`   | 試合中（延長）。延長8回表                                                    |
-| `/games/seed-finished-walk-off`    | 試合終了。逆転サヨナラ本塁打                                                 |
-| `/games/seed-finished-shutout`     | 試合終了。後攻の完封勝ち（最終回裏なし）                                     |
-| `/games/seed-finished-called-game` | 試合終了。雨天コールド（手動終了）                                           |
+| URL                                | 内容                                                                                 |
+| ---------------------------------- | ------------------------------------------------------------------------------------ |
+| `/games/seed-before-first-pitch`   | 試合開始前。オーダー登録済み（後攻はDH制・控えあり）、プレー未記録                   |
+| `/games/seed-live-pitchers-duel`   | 試合中（序盤）。0対0の投手戦                                                         |
+| `/games/seed-live-slugfest`        | 試合中（中盤）。乱打戦。盗塁・失策・暴投・代打・代走・投手交代・メモ・削除済みの記録 |
+| `/games/seed-live-last-chance`     | 試合中（終盤）。最終回裏・同点・2死満塁                                              |
+| `/games/seed-live-extra-innings`   | 試合中（延長）。延長8回表                                                            |
+| `/games/seed-finished-walk-off`    | 試合終了。逆転サヨナラ本塁打                                                         |
+| `/games/seed-finished-shutout`     | 試合終了。後攻の完封勝ち（最終回裏なし）                                             |
+| `/games/seed-finished-called-game` | 試合終了。雨天コールド（手動終了）                                                   |
 
 - Docker: `pnpm db:seed`（何度実行してもシード試合だけを初期状態へ戻し、自分で作った試合には触れません）。`pnpm db:reset` はボリューム破棄→起動→マイグレーション→シードをまとめて行います。
 - インメモリのPGlite（`DATABASE_DRIVER=pglite` で `PGLITE_DATA_DIR` が空。エージェント環境とE2E）は、起動時に自動でシードされます。

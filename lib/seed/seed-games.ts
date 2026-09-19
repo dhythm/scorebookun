@@ -159,7 +159,7 @@ function slugfest(): SeedGame {
   return seedGame(
     "seed-live-slugfest",
     "2026-09-19T04:00:00.000Z",
-    "試合中（中盤）。乱打戦。盗塁・失策・暴投・代打・代走・投手交代・メモ・ゴミ箱1件、塁上に走者あり",
+    "試合中（中盤）。乱打戦。盗塁・失策・暴投・代打・代走・投手交代・メモ・削除済みの記録1件、塁上に走者あり",
     sevenInnings(thunders(), bluebirds()),
     (sheet) => {
       sheet.plays("1B8 SB 2B7 BB HR9 K G6 F8");

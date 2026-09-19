@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { History, Redo2, RotateCcw, Trash2 } from "lucide-react";
+import { ArchiveRestore, History, Redo2, RotateCcw } from "lucide-react";
 
 import {
   AlertDialog,
@@ -79,8 +79,8 @@ export function EditHistoryControls() {
           disabled={game.deletedEvents.length === 0}
           onClick={() => setTrashOpen(true)}
         >
-          <Trash2 className="mr-1 h-4 w-4" />
-          ゴミ箱 ({game.deletedEvents.length})
+          <ArchiveRestore className="mr-1 h-4 w-4" />
+          削除済み ({game.deletedEvents.length})
         </Button>
       </div>
 
