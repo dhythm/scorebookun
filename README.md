@@ -103,8 +103,9 @@
 
 ### 必要環境
 
-- Node.js 20以降
+- Node.js 20.12以降
 - pnpm
+- Docker（ローカルのPostgreSQL用。PGliteを使う場合は不要）
 
 ### セットアップ
 
@@ -142,12 +143,35 @@ pnpm dev
 | `pnpm knip`         | 未使用コードの検出         |
 | `pnpm test`         | Vitestによるテスト         |
 | `pnpm build`        | 本番ビルド                 |
+| `pnpm test:e2e`     | PlaywrightによるE2Eテスト  |
 
 すべてをまとめて確認する場合は `pnpm check` を実行します。コードをPrettierで整形する場合は `pnpm format` を使用してください。
 
-GitHub Actionsでは、Pull Requestと`main`へのpush時に、format、lint、TypeScript、Knip、testを独立したジョブとして並列実行します。
+GitHub Actionsでは、Pull Requestと`main`へのpush時に、format、lint、TypeScript、Knip、test、E2E、PostgreSQLへのマイグレーションを独立したジョブとして並列実行します。
+
+E2Eを初めて実行する前に `pnpm exec playwright install chromium` でブラウザを取得してください。
 
 Knipでは、ブラウザから直接読み込まれる `public/sw.js` のみを実行時ファイルとして検査対象外にしています。
+
+### データベース
+
+Drizzle ORMでPostgreSQLに接続します。接続先は環境変数 `DATABASE_DRIVER` で切り替えます。
+
+| `DATABASE_DRIVER`    | 用途                             | 必要な環境変数                    |
+| -------------------- | -------------------------------- | --------------------------------- |
+| `postgres`（既定値） | ローカル開発（Docker）           | `DATABASE_URL`                    |
+| `pglite`             | Dockerを使えないエージェント環境 | `PGLITE_DATA_DIR`（空ならメモリ） |
+| `neon`               | デプロイ環境（Neon）             | `DATABASE_URL`                    |
+
+```bash
+cp .env.example .env
+pnpm db:up        # PostgreSQLをDockerで起動
+pnpm db:migrate   # drizzle/ のマイグレーションを適用
+```
+
+Dockerがない環境では `.env` の `DATABASE_DRIVER` を `pglite` にして `pnpm db:migrate` を実行します。5432番ポートが使用中の場合は `.env` の `POSTGRES_PORT` と `DATABASE_URL` を変更してください。
+
+スキーマ（`lib/db/schema.ts`）を変更したら `pnpm db:generate` でマイグレーションを生成します。Vitestの結合テストはメモリ上のPGliteで動くため、DockerもDB起動も不要です。
 
 ### ディレクトリ構成
 
@@ -158,6 +182,10 @@ lib/app-state/        アプリ状態、イベント作成、入力コマンド�
 lib/domain/           ルール、replay、統計、表記、投手成績
 lib/storage/          localStorage、schema検証、v1からv2への移行
 lib/export/           テキスト共有、JSON書き出し
+lib/db/               Drizzleのスキーマ、接続設定、ドライバ別クライアント
+drizzle/              生成されたSQLマイグレーション
+scripts/              マイグレーション実行スクリプト
+e2e/                  PlaywrightのE2Eテスト
 public/sw.js          オフラインキャッシュ
 ```
 
@@ -168,4 +196,5 @@ public/sw.js          オフラインキャッシュ
 - Next.js 16 / React 19 / TypeScript
 - Tailwind CSS 4
 - Radix UI
-- Vitest / Testing Library / jsdom / ESLint / Prettier / Knip
+- Drizzle ORM / PostgreSQL（Docker・Neon）/ PGlite
+- Vitest / Testing Library / jsdom / Playwright / ESLint / Prettier / Knip

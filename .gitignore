@@ -36,3 +36,10 @@ yarn-error.log*
 next-env.d.ts
 
 /tasks/
+# playwright
+/test-results/
+/playwright-report/
+/blob-report/
+
+# local PGlite database
+/.pglite/
