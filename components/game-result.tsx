@@ -21,6 +21,7 @@ import { formatEventNotation } from "@/lib/domain/notation";
 import { RotateCcw, Edit, Share2, Download } from "lucide-react";
 import { toast } from "sonner";
 import { toPersistedGame } from "@/lib/app-state/selectors";
+import { downloadJsonFile, exportFileName } from "@/lib/export/download-file";
 import { exportGameAsJson, exportGameAsText } from "@/lib/export/game-log";
 import { getPitcherStats } from "@/lib/domain/pitching";
 import { GameHistory } from "@/components/game-history";
@@ -299,17 +300,12 @@ export function GameResult() {
     }
   };
 
-  const handleJsonDownload = () => {
-    const json = exportGameAsJson(toPersistedGame(game));
-    const url = URL.createObjectURL(
-      new Blob([json], { type: "application/json" })
+  const handleExport = () => {
+    downloadJsonFile(
+      exportFileName("game", game.date),
+      exportGameAsJson(toPersistedGame(game))
     );
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `scorebook-${game.date.slice(0, 10)}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-    toast.success("JSONを書き出しました");
+    toast.success("試合をエクスポートしました");
   };
 
   return (
@@ -374,13 +370,9 @@ export function GameResult() {
               <Share2 className="mr-2 h-4 w-4" />
               共有
             </Button>
-            <Button
-              variant="secondary"
-              className="h-11"
-              onClick={handleJsonDownload}
-            >
+            <Button variant="secondary" className="h-11" onClick={handleExport}>
               <Download className="mr-2 h-4 w-4" />
-              JSON
+              エクスポート
             </Button>
             <PrintScorebookButton />
             <Button

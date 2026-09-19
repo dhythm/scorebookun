@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, History, Trash2, Upload } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Download,
+  History,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
@@ -24,7 +31,9 @@ import {
   type PersistedGameV2,
 } from "@/lib/storage/local-storage";
 import { createBrowserSyncMetaStore } from "@/lib/storage/sync-meta";
-import { parseHistoryArchive } from "@/lib/export/history-archive";
+import { downloadJsonFile, exportFileName } from "@/lib/export/download-file";
+import { exportHistoryArchive } from "@/lib/export/history-archive";
+import { parseImportedGames } from "@/lib/export/import-games";
 import { toast } from "sonner";
 
 export function GameHistory() {
@@ -63,9 +72,17 @@ export function GameHistory() {
     refresh();
   };
 
-  const handleArchiveImport = async (file: File) => {
+  const handleExport = () => {
+    downloadJsonFile(
+      exportFileName("history", new Date().toISOString()),
+      exportHistoryArchive(games)
+    );
+    toast.success(`${games.length}試合をエクスポートしました`);
+  };
+
+  const handleImport = async (file: File) => {
     try {
-      const importedGames = parseHistoryArchive(await file.text());
+      const importedGames = parseImportedGames(await file.text());
       const importedCount = await importGames(importedGames);
       refresh();
       if (importedCount < importedGames.length) {
@@ -74,10 +91,12 @@ export function GameHistory() {
         );
       }
       if (importedCount > 0) {
-        toast.success(`${importedCount}試合を履歴へ取り込みました`);
+        toast.success(`${importedCount}試合をインポートしました`);
       }
     } catch {
-      toast.error("履歴JSONを取り込めませんでした");
+      toast.error(
+        "インポートできませんでした。このアプリでエクスポートしたファイルを選んでください"
+      );
     }
   };
 
@@ -114,20 +133,34 @@ export function GameHistory() {
             id="saved-game-list"
             className="space-y-2 border-t border-border px-4 py-4"
           >
-            <label className="flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium hover:bg-secondary">
-              <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
-              退避JSONを取り込む
-              <input
-                type="file"
-                accept="application/json,.json"
-                className="sr-only"
-                onChange={(event) => {
-                  const file = event.currentTarget.files?.[0];
-                  if (file) void handleArchiveImport(file);
-                  event.currentTarget.value = "";
-                }}
-              />
-            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex min-h-11 cursor-pointer items-center justify-center rounded-md border border-border bg-background px-3 text-sm font-medium hover:bg-secondary has-[:focus-visible]:ring-[3px] has-[:focus-visible]:ring-ring/50">
+                <Upload className="mr-2 h-4 w-4" aria-hidden="true" />
+                インポート
+                <input
+                  type="file"
+                  accept="application/json,.json"
+                  aria-label="試合履歴をインポート"
+                  className="sr-only"
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    if (file) void handleImport(file);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 w-full"
+                disabled={games.length === 0}
+                onClick={handleExport}
+                aria-label="試合履歴をエクスポート"
+              >
+                <Download className="mr-2 h-4 w-4" aria-hidden="true" />
+                エクスポート
+              </Button>
+            </div>
             {games.length === 0 && (
               <p className="py-2 text-center text-sm text-muted-foreground">
                 保存された試合はありません

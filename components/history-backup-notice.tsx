@@ -14,19 +14,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { downloadJsonFile, exportFileName } from "@/lib/export/download-file";
 import { exportHistoryArchive } from "@/lib/export/history-archive";
 import type { PersistedGameV2 } from "@/lib/storage/local-storage";
 
 function downloadArchive(games: readonly PersistedGameV2[]): void {
-  const json = exportHistoryArchive(games);
-  const url = URL.createObjectURL(
-    new Blob([json], { type: "application/json" })
+  downloadJsonFile(
+    exportFileName("history", new Date().toISOString()),
+    exportHistoryArchive(games)
   );
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `scorebook-history-${new Date().toISOString().slice(0, 10)}.json`;
-  anchor.click();
-  URL.revokeObjectURL(url);
 }
 
 export function HistoryBackupNotice({
@@ -50,10 +46,12 @@ export function HistoryBackupNotice({
         <div className="flex items-start gap-3">
           <Archive className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
           <div className="min-w-0 flex-1 space-y-2">
-            <p className="text-sm font-bold">試合履歴の退避が必要です</p>
+            <p className="text-sm font-bold">
+              試合履歴の保存容量が残りわずかです
+            </p>
             <p className="text-xs leading-relaxed">
               保存容量を安全に保つため、古い{games.length}
-              試合をJSONで退避してください。ダウンロードするまで削除しません。
+              試合をエクスポートしてください。エクスポートするまで削除しません。
             </p>
             <div className="flex flex-wrap gap-2">
               <Button
@@ -66,7 +64,7 @@ export function HistoryBackupNotice({
                 }}
               >
                 <Download className="mr-1 h-4 w-4" />
-                {games.length}試合をJSONで退避
+                {games.length}試合をエクスポート
               </Button>
               {archiveDownloaded && (
                 <Button
@@ -76,7 +74,7 @@ export function HistoryBackupNotice({
                   className="min-h-11 border-amber-800 bg-white text-amber-950"
                   onClick={() => setConfirmRemoval(true)}
                 >
-                  退避済みの履歴を削除
+                  エクスポート済みの履歴を削除
                 </Button>
               )}
             </div>
@@ -87,10 +85,12 @@ export function HistoryBackupNotice({
       <AlertDialog open={confirmRemoval} onOpenChange={setConfirmRemoval}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>退避済みの履歴を削除しますか？</AlertDialogTitle>
+            <AlertDialogTitle>
+              エクスポート済みの履歴を削除しますか？
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              JSONを保存した{games.length}試合を履歴から削除します。
-              ダウンロードしたファイルは安全な場所に保管してください。
+              エクスポートした{games.length}試合を履歴から削除します。
+              エクスポートしたファイルは「試合履歴」のインポートから戻せます。安全な場所に保管してください。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
