@@ -64,12 +64,9 @@ import { EventIntegrityAlert } from "@/components/event-integrity-alert";
 import { GameNoteDialog } from "@/components/game-note-dialog";
 import { DisplaySettingsDialog } from "@/components/display-settings-dialog";
 import { EditHistoryControls } from "@/components/edit-history-controls";
-import { useUiPreferences } from "@/components/ui-preferences-provider";
-import { vibrateOnConfirmation } from "@/lib/ui-preferences";
 
 export function LiveScoring() {
   const { game, dispatch, addEvent } = useGame();
-  const { vibrationEnabled } = useUiPreferences();
   const [pendingResult, setPendingResult] = useState<AtBatResult | null>(null);
   const [pendingDetail, setPendingDetail] = useState<string | undefined>();
   const [pendingBattedBall, setPendingBattedBall] = useState<
@@ -107,7 +104,6 @@ export function LiveScoring() {
     } else {
       toast.success(successMessage);
     }
-    vibrateOnConfirmation(vibrationEnabled, navigator);
     return true;
   };
 

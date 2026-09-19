@@ -4,12 +4,10 @@ const UI_PREFERENCES_VERSION = 1 as const;
 
 export interface UiPreferences {
   outdoorMode: boolean;
-  vibrationEnabled: boolean;
 }
 
 export const DEFAULT_UI_PREFERENCES: Readonly<UiPreferences> = {
   outdoorMode: false,
-  vibrationEnabled: false,
 };
 
 interface UiPreferencesEnvelope extends UiPreferences {
@@ -19,10 +17,6 @@ interface UiPreferencesEnvelope extends UiPreferences {
 export interface UiPreferencesStorage {
   getItem(key: string): string | null;
   setItem(key: string, value: string): void;
-}
-
-interface VibrationNavigator {
-  vibrate?: (pattern: number) => boolean;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -39,15 +33,12 @@ export function loadUiPreferences(
     if (
       !isRecord(parsed) ||
       parsed.version !== UI_PREFERENCES_VERSION ||
-      typeof parsed.outdoorMode !== "boolean" ||
-      typeof parsed.vibrationEnabled !== "boolean"
+      typeof parsed.outdoorMode !== "boolean"
     ) {
       return { ...DEFAULT_UI_PREFERENCES };
     }
-    return {
-      outdoorMode: parsed.outdoorMode,
-      vibrationEnabled: parsed.vibrationEnabled,
-    };
+    // Older versions also stored a vibration setting; it is ignored.
+    return { outdoorMode: parsed.outdoorMode };
   } catch {
     return { ...DEFAULT_UI_PREFERENCES };
   }
@@ -64,20 +55,6 @@ export function saveUiPreferences(
   try {
     storage.setItem(UI_PREFERENCES_STORAGE_KEY, JSON.stringify(envelope));
     return true;
-  } catch {
-    return false;
-  }
-}
-
-export function vibrateOnConfirmation(
-  enabled: boolean,
-  vibrationNavigator: VibrationNavigator
-): boolean {
-  if (!enabled || typeof vibrationNavigator.vibrate !== "function") {
-    return false;
-  }
-  try {
-    return vibrationNavigator.vibrate(40);
   } catch {
     return false;
   }

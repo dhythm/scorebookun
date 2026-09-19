@@ -5,7 +5,6 @@ import {
   UI_PREFERENCES_STORAGE_KEY,
   loadUiPreferences,
   saveUiPreferences,
-  vibrateOnConfirmation,
 } from "./ui-preferences";
 
 function memoryStorage(initial?: string) {
@@ -22,13 +21,12 @@ describe("UI preferences", () => {
   it("uses disabled defaults when no preferences have been saved", () => {
     expect(loadUiPreferences(memoryStorage())).toEqual({
       outdoorMode: false,
-      vibrationEnabled: false,
     });
   });
 
   it("round-trips versioned preferences", () => {
     const storage = memoryStorage();
-    const preferences = { outdoorMode: true, vibrationEnabled: true };
+    const preferences = { outdoorMode: true };
 
     expect(saveUiPreferences(storage, preferences)).toBe(true);
     expect(storage.setItem).toHaveBeenCalledWith(
@@ -36,6 +34,21 @@ describe("UI preferences", () => {
       expect.stringContaining('"version":1')
     );
     expect(loadUiPreferences(storage)).toEqual(preferences);
+  });
+
+  it("keeps outdoor mode from preferences saved when vibration still existed", () => {
+    const storage = memoryStorage(
+      '{"version":1,"outdoorMode":true,"vibrationEnabled":true}'
+    );
+
+    const preferences = loadUiPreferences(storage);
+    saveUiPreferences(storage, preferences);
+
+    expect(preferences).toEqual({ outdoorMode: true });
+    expect(storage.setItem).toHaveBeenLastCalledWith(
+      UI_PREFERENCES_STORAGE_KEY,
+      '{"version":1,"outdoorMode":true}'
+    );
   });
 
   it("falls back safely for malformed data and storage failures", () => {
@@ -56,29 +69,5 @@ describe("UI preferences", () => {
     expect(saveUiPreferences(unavailableStorage, DEFAULT_UI_PREFERENCES)).toBe(
       false
     );
-  });
-});
-
-describe("vibrateOnConfirmation", () => {
-  it("vibrates briefly only when feedback is enabled and supported", () => {
-    const vibrate = vi.fn(() => true);
-
-    expect(vibrateOnConfirmation(true, { vibrate })).toBe(true);
-    expect(vibrate).toHaveBeenCalledWith(40);
-
-    vibrate.mockClear();
-    expect(vibrateOnConfirmation(false, { vibrate })).toBe(false);
-    expect(vibrate).not.toHaveBeenCalled();
-    expect(vibrateOnConfirmation(true, {})).toBe(false);
-  });
-
-  it("does not let a browser vibration error escape", () => {
-    expect(
-      vibrateOnConfirmation(true, {
-        vibrate: () => {
-          throw new Error("denied");
-        },
-      })
-    ).toBe(false);
   });
 });

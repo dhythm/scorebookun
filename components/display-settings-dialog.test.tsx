@@ -13,7 +13,7 @@ afterEach(() => {
 });
 
 describe("DisplaySettingsDialog", () => {
-  it("keeps outdoor mode and vibration as independent opt-in settings", async () => {
+  it("offers outdoor mode as an opt-in setting and no vibration setting", async () => {
     const user = userEvent.setup();
     render(
       <UiPreferencesProvider>
@@ -21,15 +21,14 @@ describe("DisplaySettingsDialog", () => {
       </UiPreferencesProvider>
     );
 
-    await user.click(screen.getByRole("button", { name: "表示と操作の設定" }));
+    await user.click(screen.getByRole("button", { name: "表示の設定" }));
     const outdoorMode = screen.getByRole("checkbox", { name: /屋外モード/ });
-    const vibration = screen.getByRole("checkbox", { name: /確定時に振動/ });
 
     expect(outdoorMode.getAttribute("aria-checked")).toBe("false");
-    expect(vibration.getAttribute("aria-checked")).toBe("false");
+    expect(screen.queryByRole("checkbox", { name: /振動/ })).toBeNull();
+    expect(screen.getAllByRole("checkbox")).toHaveLength(1);
 
     await user.click(outdoorMode);
     expect(outdoorMode.getAttribute("aria-checked")).toBe("true");
-    expect(vibration.getAttribute("aria-checked")).toBe("false");
   });
 });
